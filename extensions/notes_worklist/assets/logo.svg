@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Back card -->
+  <rect x="14" y="14" width="48" height="48" rx="4"
+        fill="white" stroke="#1a1a1a" stroke-width="3"/>
+
+  <!-- Middle card -->
+  <rect x="23" y="23" width="48" height="48" rx="4"
+        fill="white" stroke="#1a1a1a" stroke-width="3"/>
+
+  <!-- Front card -->
+  <rect x="32" y="32" width="48" height="48" rx="4"
+        fill="white" stroke="#1a1a1a" stroke-width="3"/>
+
+  <!-- Status dot for back card (filled = closed) -->
+  <circle cx="22" cy="18" r="4.5" fill="#3B7DBC" stroke="#1a1a1a" stroke-width="1.5"/>
+
+  <!-- Status dot for middle card (outlined = open) -->
+  <circle cx="31" cy="27" r="4.5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+
+  <!-- Status dot for front card (filled = closed) -->
+  <circle cx="40" cy="36" r="4.5" fill="#3B7DBC" stroke="#1a1a1a" stroke-width="1.5"/>
+</svg>
