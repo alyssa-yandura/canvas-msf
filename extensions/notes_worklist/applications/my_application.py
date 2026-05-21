@@ -15,6 +15,18 @@ from canvas_sdk.v1.data.note import NoteStates, NoteTypeCategories, NoteType
 from canvas_sdk.v1.data.task import TaskStatus
 
 
+# Default state set when no state_filter is sent. Matches encounter_list's
+# default behavior — the active worklist of in-progress and just-completed work.
+OPEN_STATES = (
+    NoteStates.NEW,
+    NoteStates.UNLOCKED,
+    NoteStates.PUSHED,
+    NoteStates.UNDELETED,
+    NoteStates.CONVERTED,
+    NoteStates.NOSHOW,
+)
+
+
 class MyApplication(Application):
     """An embeddable application that can be registered to Canvas."""
 
@@ -31,7 +43,7 @@ class NotesWorklistApi(StaffSessionAuthMixin, SimpleAPI):
 
     @api.get("/encounters")
     def get_encounters(self) -> list[Response | Effect]:
-        """Get list of open encounters with pagination."""
+        """Get paginated notes filtered by NoteStates and the usual worklist filters."""
         provider_ids = self.request.query_params.get("provider_ids")
         location_ids = self.request.query_params.get("location_ids")
         billable_only = self.request.query_params.get("billable_only") == "true"
@@ -42,6 +54,7 @@ class NotesWorklistApi(StaffSessionAuthMixin, SimpleAPI):
         patient_search = self.request.query_params.get("patient_search")
         dos_start = self.request.query_params.get("dos_start")
         dos_end = self.request.query_params.get("dos_end")
+        state_filter = self.request.query_params.get("state_filter")
 
         # Pagination parameters
         page = int(self.request.query_params.get("page", 1))
@@ -51,17 +64,19 @@ class NotesWorklistApi(StaffSessionAuthMixin, SimpleAPI):
         sort_by = self.request.query_params.get("sort_by", "dos")
         sort_direction = self.request.query_params.get("sort_direction", "asc")
 
-        note_queryset = Note.objects.exclude(current_state__state__in=(
-            NoteStates.SIGNED,
-            NoteStates.LOCKED,
-            NoteStates.DELETED,
-            NoteStates.DISCHARGED,
-            NoteStates.SCHEDULING,
-            NoteStates.BOOKED,
-            NoteStates.CANCELLED,
-            NoteStates.CONFIRM_IMPORT,
-            NoteStates.REVERTED
-        ))
+        # Resolve which NoteStates to include. Comma-separated names like
+        # "NEW,UNLOCKED,CONVERTED". Unknown names are silently dropped so an
+        # old client sending a now-removed state doesn't break the request.
+        if state_filter:
+            requested_states = [
+                getattr(NoteStates, name.strip())
+                for name in state_filter.split(",")
+                if name.strip() and hasattr(NoteStates, name.strip())
+            ]
+        else:
+            requested_states = list(OPEN_STATES)
+
+        note_queryset = Note.objects.filter(current_state__state__in=requested_states)
 
         note_queryset = note_queryset.exclude(note_type_version__category__in=(NoteTypeCategories.MESSAGE,
                                                                NoteTypeCategories.LETTER,))
@@ -150,6 +165,7 @@ class NotesWorklistApi(StaffSessionAuthMixin, SimpleAPI):
                 "location": note.location.full_name if note.location else "Unknown Location",
                 "location_id": str(note.location.id) if note.location else None,
                 "created": note.created.isoformat() if note.created else None,
+                "state": note.current_state.state if note.current_state else None,
             }
             encounters.append(encounter_data)
 

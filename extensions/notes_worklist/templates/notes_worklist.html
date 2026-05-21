@@ -181,6 +181,35 @@
             color: #0288d1;
         }
 
+        .state-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .state-active {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .state-pre-encounter {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .state-finalized {
+            background-color: #eceff1;
+            color: #546e7a;
+        }
+
+        .state-abandoned {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
         a.encounter-link {
             font-weight: 600;
             color: #1d4ed8;
@@ -365,6 +394,49 @@
             max-height: 200px;
             overflow-y: auto;
             display: none;
+        }
+
+        .dropdown-presets {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            background-color: #fafafa;
+        }
+
+        .preset-btn {
+            flex: 1;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            background-color: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #334155;
+        }
+
+        .preset-btn:hover {
+            background-color: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        .dropdown-section {
+            padding: 4px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .dropdown-section:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-section-title {
+            padding: 6px 12px 2px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #64748b;
+            letter-spacing: 0.5px;
         }
 
         .dropdown-search {
@@ -712,6 +784,23 @@
 
                 <div class="filters-group">
                     <div class="filter-field">
+                        <label class="filter-label">Status</label>
+                        <div class="filter-dropdown" id="stateFilter" data-values="">
+                            <div class="selected-value">
+                                <span class="placeholder-text">All Open</span>
+                            </div>
+                            <div class="dropdown-options" id="state-options">
+                                <div class="dropdown-presets">
+                                    <button type="button" class="preset-btn" data-preset="open">All Open</button>
+                                    <button type="button" class="preset-btn" data-preset="closed">All Closed</button>
+                                    <button type="button" class="preset-btn" data-preset="all">All</button>
+                                </div>
+                                <!-- State options populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-field">
                         <label class="filter-label">Owner</label>
                         <div class="filter-dropdown" id="providerFilter" data-values="">
                             <div class="selected-value">
@@ -822,6 +911,7 @@
             <thead>
                 <tr>
                     <th>Patient Name</th>
+                    <th>Status</th>
                     <th>Owner</th>
                     <th>Location</th>
                     <th>Note</th>
@@ -872,11 +962,53 @@
         let locations = [];
         let noteTypes = [];
         let claimQueues = [];
+
+        // NoteStates mapping. value = DB code, name = backend API name,
+        // label = customer-facing display, bucket = visual grouping/coloring.
+        // Order within each bucket determines the dropdown's option order.
+        const STATES = [
+            // Active worklist (default selection)
+            { value: 'NEW',  name: 'NEW',            label: 'New',             bucket: 'active' },
+            { value: 'ULK',  name: 'UNLOCKED',       label: 'Unlocked',        bucket: 'active' },
+            { value: 'PSH',  name: 'PUSHED',         label: 'Charges pushed',  bucket: 'active' },
+            { value: 'UND',  name: 'UNDELETED',      label: 'Undeleted',       bucket: 'active' },
+            { value: 'CVD',  name: 'CONVERTED',      label: 'Checked in',      bucket: 'active' },
+            { value: 'NSW',  name: 'NOSHOW',         label: 'No show',         bucket: 'active' },
+            // Pre-encounter (scheduled, not yet arrived)
+            { value: 'SCH',  name: 'SCHEDULING',     label: 'Scheduling',      bucket: 'pre-encounter' },
+            { value: 'BKD',  name: 'BOOKED',         label: 'Booked',          bucket: 'pre-encounter' },
+            // Finalized (clinical work done)
+            { value: 'SGN',  name: 'SIGNED',         label: 'Signed',          bucket: 'finalized' },
+            { value: 'LKD',  name: 'LOCKED',         label: 'Locked',          bucket: 'finalized' },
+            { value: 'DSC',  name: 'DISCHARGED',     label: 'Discharged',      bucket: 'finalized' },
+            { value: 'CNF',  name: 'CONFIRM_IMPORT', label: 'Confirmed',       bucket: 'finalized' },
+            // Abandoned (canceled/deleted/reverted)
+            { value: 'CLD',  name: 'CANCELLED',      label: 'Canceled',        bucket: 'abandoned' },
+            { value: 'DLT',  name: 'DELETED',        label: 'Deleted',         bucket: 'abandoned' },
+            { value: 'RVT',  name: 'REVERTED',       label: 'Reverted',        bucket: 'abandoned' },
+        ];
+
+        const STATE_PRESETS = {
+            open:   STATES.filter(s => s.bucket === 'active').map(s => s.name),
+            closed: STATES.filter(s => s.bucket === 'finalized').map(s => s.name),
+            all:    STATES.map(s => s.name),
+        };
+
+        const STATE_BY_VALUE = Object.fromEntries(STATES.map(s => [s.value, s]));
+        const STATE_BY_NAME  = Object.fromEntries(STATES.map(s => [s.name, s]));
+        const BUCKET_TITLES = {
+            'active': 'Active',
+            'pre-encounter': 'Pre-encounter',
+            'finalized': 'Finalized',
+            'abandoned': 'Abandoned',
+        };
+
         let currentFilters = {
             provider_ids: [],
             location_ids: [],
             note_type_names: [],
             claim_queue_names: [],
+            state_filter: [...STATE_PRESETS.open],
             billable_only: false,
             has_uncommitted_commands: false,
             has_delegated_orders: false,
@@ -942,6 +1074,12 @@
                                 params.append(key, claimQueueNamesString);
                             }
                         }
+                    } else if (key === 'state_filter' && Array.isArray(value)) {
+                        // Send the selected NoteState names (e.g. "NEW,UNLOCKED").
+                        // An empty array would match nothing server-side, so only send when populated.
+                        if (value.length > 0) {
+                            params.append(key, value.join(','));
+                        }
                     } else if (['billable_only', 'has_uncommitted_commands', 'has_delegated_orders'].includes(key)) {
                         // Always include boolean parameters, even if false
                         params.append(key, value.toString());
@@ -977,7 +1115,8 @@
                     uncommittedCommands: encounter.uncommitted_commands,
                     delegatedOrders: encounter.delegated_orders,
                     claimQueue: encounter.claim_queue,
-                    created: encounter.created
+                    created: encounter.created,
+                    state: encounter.state
                 }));
                 
                 return data;
@@ -1080,6 +1219,14 @@
             return `<span class="claim-status ${statusClass}">${status}</span>`;
         }
 
+        function createStateBadge(stateValue) {
+            const stateInfo = STATE_BY_VALUE[stateValue];
+            if (!stateInfo) {
+                return '<span class="empty-cell">—</span>';
+            }
+            return `<span class="state-badge state-${stateInfo.bucket}">${escapeHtml(stateInfo.label)}</span>`;
+        }
+
         function renderTable() {
             const tbody = document.getElementById('worklistBody');
             tbody.innerHTML = '';
@@ -1090,6 +1237,7 @@
 
                 row.innerHTML = `
                     <td><a href="${patientLink}" target="_top">${escapeHtml(encounter.patientName)}${encounter.patientDob ? ` (${escapeHtml(encounter.patientDob)})` : ''}</a></td>
+                    <td>${createStateBadge(encounter.state)}</td>
                     <td>${escapeHtml(encounter.provider)}</td>
                     <td>${escapeHtml(encounter.location)}</td>
                     <td><a href="${patientLink}#noteId=${encounter.dbid}" target="_top">${escapeHtml(encounter.noteTitle)}</a></td>
@@ -1420,6 +1568,115 @@
             setupDropdown('claimQueueFilter', 'claim-queue-options', 'claim_queue_names');
         }
 
+        // Status dropdown — custom because of the preset buttons and bucket
+        // sections. Cannot reuse populateDropdown/setupDropdown which assume
+        // a flat list with an "All" sentinel checkbox.
+        function populateStatusDropdown() {
+            const dropdownOptions = document.getElementById('state-options');
+            const buckets = ['active', 'pre-encounter', 'finalized', 'abandoned'];
+            // Build section HTML for each bucket. Presets div in HTML stays untouched.
+            const sectionsHtml = buckets.map(bucket => {
+                const statesInBucket = STATES.filter(s => s.bucket === bucket);
+                const optionsHtml = statesInBucket.map(s => {
+                    const isSelected = currentFilters.state_filter.includes(s.name);
+                    return `
+                        <div class="dropdown-option" data-state-name="${s.name}">
+                            <input type="checkbox" id="state-${s.name}" ${isSelected ? 'checked' : ''}>
+                            <label for="state-${s.name}">${escapeHtml(s.label)}</label>
+                        </div>`;
+                }).join('');
+                return `
+                    <div class="dropdown-section">
+                        <div class="dropdown-section-title">${BUCKET_TITLES[bucket]}</div>
+                        ${optionsHtml}
+                    </div>`;
+            }).join('');
+
+            // Append sections after the existing presets div (don't replace it)
+            const existingSections = dropdownOptions.querySelectorAll('.dropdown-section');
+            existingSections.forEach(s => s.remove());
+            dropdownOptions.insertAdjacentHTML('beforeend', sectionsHtml);
+        }
+
+        function updateStatusDisplay() {
+            const dropdown = document.getElementById('stateFilter');
+            const selectedValue = dropdown.querySelector('.selected-value');
+            const selected = currentFilters.state_filter;
+            const matches = preset => preset.length === selected.length && preset.every(n => selected.includes(n));
+
+            let label;
+            if (selected.length === 0) {
+                label = 'None selected';
+            } else if (matches(STATE_PRESETS.open)) {
+                label = 'All Open';
+            } else if (matches(STATE_PRESETS.closed)) {
+                label = 'All Closed';
+            } else if (matches(STATE_PRESETS.all)) {
+                label = 'All';
+            } else {
+                label = `${selected.length} selected`;
+            }
+            selectedValue.innerHTML = `<span class="placeholder-text">${label}</span>`;
+        }
+
+        function applyStatePreset(presetName) {
+            // Reset state_filter to the chosen preset, re-sync checkboxes, refresh display.
+            currentFilters.state_filter = [...STATE_PRESETS[presetName]];
+            const options = document.getElementById('state-options');
+            options.querySelectorAll('.dropdown-option').forEach(opt => {
+                const stateName = opt.getAttribute('data-state-name');
+                const checkbox = opt.querySelector('input[type="checkbox"]');
+                if (checkbox) {
+                    checkbox.checked = currentFilters.state_filter.includes(stateName);
+                }
+            });
+            updateStatusDisplay();
+        }
+
+        function setupStatusDropdown() {
+            const dropdown = document.getElementById('stateFilter');
+            const options = document.getElementById('state-options');
+
+            // Open/close on header click
+            dropdown.addEventListener('click', (e) => {
+                if (e.target.closest('.dropdown-option') || e.target.closest('.preset-btn')) return;
+                closeAllDropdowns();
+                dropdown.classList.toggle('open');
+                options.classList.toggle('show');
+            });
+
+            // Preset buttons
+            options.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    applyStatePreset(btn.getAttribute('data-preset'));
+                });
+            });
+
+            // Individual state checkbox toggling
+            options.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const option = e.target.closest('.dropdown-option');
+                if (!option) return;
+                const stateName = option.getAttribute('data-state-name');
+                if (!stateName) return;
+                const checkbox = option.querySelector('input[type="checkbox"]');
+                if (!checkbox) return;
+
+                checkbox.checked = !checkbox.checked;
+                if (checkbox.checked) {
+                    if (!currentFilters.state_filter.includes(stateName)) {
+                        currentFilters.state_filter.push(stateName);
+                    }
+                } else {
+                    currentFilters.state_filter = currentFilters.state_filter.filter(n => n !== stateName);
+                }
+                updateStatusDisplay();
+            });
+
+            updateStatusDisplay();
+        }
+
         function setupFilterEventListeners() {
             const billableFilter = document.getElementById('billableFilter');
             const uncommittedCommandsFilter = document.getElementById('uncommittedCommandsFilter');
@@ -1435,6 +1692,7 @@
             setupLocationDropdown();
             setupNoteTypeDropdown();
             setupClaimQueueDropdown();
+            setupStatusDropdown();
 
             // Billable filter change
             billableFilter.addEventListener('change', () => {
@@ -1491,6 +1749,9 @@
                 currentFilters.patient_search = '';
                 currentFilters.dos_start = '';
                 currentFilters.dos_end = '';
+                // Reset Status to the Open preset (the default) rather than empty,
+                // which would render an empty worklist and confuse the user.
+                applyStatePreset('open');
 
                 // Reset UI elements
                 billableFilter.checked = false;
@@ -1755,6 +2016,7 @@
                 populateLocationDropdown();
                 populateNoteTypeDropdown();
                 populateClaimQueueDropdown();
+                populateStatusDropdown();
 
                 // Initialize page size dropdown
                 const pageSizeSelect = document.getElementById('pageSizeSelect');
