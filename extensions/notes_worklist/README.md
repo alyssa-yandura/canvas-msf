@@ -2,32 +2,32 @@
 
 ## Overview
 
-The Notes Worklist plugin provides a filterable worklist view of notes across their **entire lifecycle** — pre-encounter (Booked, Scheduling), active (New, Unlocked, Checked in, No show, Charges pushed), finalized (Signed, Locked, Discharged), and abandoned (Canceled, Deleted, Reverted). Users pick any subset of states from a multi-select dropdown with quick-pick presets for "All Open" / "All Closed" / "All".
+The Notes Worklist plugin provides a filterable worklist view of notes across **open clinical work, finalized notes, and appointments**. Clinicians pick from six clinician-friendly status options (Open / Closed / Booked / No show / Canceled / Deleted) with quick-pick presets for the common cases.
 
-It is a sibling of the [encounter_list](../encounter_list/) plugin, which is hard-scoped to open clinical encounters. Notes Worklist covers a broader scope: it surfaces appointments that haven't happened yet, finalized inpatient discharges, and abandoned/canceled records that encounter_list deliberately excludes.
+It is a sibling of the [encounter_list](../encounter_list/) plugin, which is hard-scoped to open clinical encounters. Notes Worklist covers a broader scope: it surfaces appointments that haven't happened yet, signed/locked notes, inpatient discharges, and canceled/deleted records that encounter_list deliberately excludes.
 
 ![Notes Worklist](assets/notes-worklist.png)
 
 ## Differs from encounter_list
 
-- **State multi-select with presets**: filter the worklist by any combination of NoteStates. Quick-pick buttons select common groupings ("All Open", "All Closed", "All") with one click. encounter_list shows the "All Open" set with no way to change it.
-- **Per-row Status column**: every row shows the note's current state as a colored badge, so mixed-state views remain readable.
-- **Pre-encounter and abandoned states are first-class**: Booked appointments, Scheduling, Canceled, Deleted, and Reverted notes can be surfaced — encounter_list hides them entirely.
-- All other filters, columns, and behaviors are inherited from encounter_list and behave the same.
+- **Status multi-select with bucket-level options**: filter by Open, Closed, Booked, No show, Canceled, or Deleted. Quick-pick buttons (All Open / All Closed / All Appointment / All) select common groupings with one click. encounter_list shows the "All Open" set with no way to change it.
+- **Per-row Status column**: every row shows the note's current state as a colored badge (green for open, gray for closed, blue for appointment, red for deleted), so mixed-state views stay readable.
+- **Location dropdown reacts to Status**: when you change the Status filter, the Location dropdown re-fetches to show only locations that have notes in those states. No more picking a location that has zero matches.
+- **Appointments are first-class**: Booked, No show, and Canceled appointments can be surfaced via the "All Appointment" preset — encounter_list hides them entirely.
 
 ## Features
 
-- **State Multi-Select**: Pick any combination of NoteStates. Defaults to the "All Open" preset (matches encounter_list's default behavior).
-- **Quick-Pick Presets**: One-click buttons for "All Open", "All Closed", and "All".
-- **Status Badge Column**: Each row shows its current NoteState as a colored badge — green for open/active, blue for pre-encounter, gray for finalized, red for abandoned.
-- **Advanced Filtering & Search**: Search by patient name, filter by DOS range, provider (owner), location, note type, claim queue, billable, committed commands, and delegated orders
-- **Multi Selection**: Select multiple providers, locations, note types, and claim queues to view combined workloads
-- **Command Status Tracking**: Shows uncommitted commands and delegated orders for each encounter, with one-click filters for encounters that need attention
-- **Claim Queue Monitoring**: Displays current claim processing status
-- **Pagination**: Handles large datasets with 25 or 50 encounters per page
-- **Direct Navigation**: Click-through links to patient charts and encounter notes
-- **Responsive Design**: Works on desktop and mobile devices
-- **Real-time Data**: Fresh data loaded from Canvas after each apply
+- **Status Multi-Select**: Pick from six bucket-level options. Defaults to "All Open" (matches encounter_list's default behavior).
+- **Quick-Pick Presets**: One-click buttons for "All Open", "All Closed", "All Appointment", and "All".
+- **Status Badge Column**: Each row shows its specific NoteState as a colored badge so you can distinguish, e.g., Signed vs Locked vs Discharged within the Closed bucket at a glance.
+- **Contextual Location Dropdown**: Location options stay consistent with the current Status filter.
+- **Filtering & Search**: Search by patient name, filter by DOS range, provider (owner), location, note type, claim queue, and uncommitted commands.
+- **Per-Dropdown Clear**: Each multi-select dropdown has a Clear button to deselect everything in one click.
+- **Multi Selection**: Select multiple providers, locations, note types, and claim queues to view combined workloads.
+- **Uncommitted Commands Visibility**: Column and filter for notes with staged/in-review commands that need attention.
+- **Claim Queue Visibility**: Column with color-coded badges for billing pipeline status, plus a filter dropdown.
+- **Pagination**: Handles large datasets with 25 or 50 records per page.
+- **Direct Navigation**: Click-through links to patient charts and encounter notes.
 
 ## How to Access
 
@@ -61,13 +61,17 @@ The plugin provides one access point:
 - **Messages**: Internal communications between providers
 - **Letters**: Formal correspondence and external communications
 
-### Encounter States
-- **NEW**: Newly created encounters that haven't been started
-- **UNLOCKED**: Encounters that are currently being worked on but not yet finalized
-- **PUSHED**: Encounters that have just had charges pushed but are not yet finalized
-- **UNDELETED**: Encounters that were restored on the timeline
-- **CONVERTED**: Encounter note that have been checked-in
-- **NOSHOW**: Appointments that have been marked as no-show that have not yet been finalized
+### Status Filter Options
+The Status dropdown bundles related NoteStates into clinician-friendly buckets:
+
+- **Open** (default) — active clinical work: New, Unlocked, Charges pushed, Undeleted, Checked in
+- **Closed** — finalized clinical work: Signed, Locked, Discharged
+- **Booked** — appointment scheduled, patient not yet checked in
+- **No show** — appointment didn't happen
+- **Canceled** — appointment was canceled
+- **Deleted** — soft-deleted notes (opt-in; not selected by "All" preset)
+
+Rarely-used admin/transient states (Scheduling, Reverted, Confirmed) are not surfaced in the filter UI.
 
 ## Filtering Capabilities
 
@@ -78,78 +82,46 @@ The plugin provides one access point:
    - Press Enter or click Apply Filters to refresh results
 
 2. **Date of Service (DOS) Range**:
-   - Start and end date pickers to narrow encounters by service date
+   - Start and end date pickers to narrow notes by service date
    - Accepts partial ranges (start only, end only) for flexible filtering
 
-3. **Owner (Provider)**: 
+3. **Status**:
+   - Multi-select dropdown with bucket-level options (see "Status Filter Options" above)
+   - Quick-pick preset buttons: All Open / All Closed / All Appointment / All
+   - Defaults to All Open
+
+4. **Owner (Provider)**:
    - Multi-select dropdown of active providers
-   - Defaults to showing the logged-in user's encounters
-   - Can select multiple providers to view combined workload
-   - Option to view all providers
+   - Defaults to showing the logged-in user's notes
+   - Per-dropdown Clear button to deselect all
 
-4. **Location**: 
-   - Multi-select dropdown of practice locations
-   - Shows only locations that have open encounters
-   - Option to view all locations
+5. **Location**:
+   - Multi-select dropdown of practice locations that have notes in the current Status filter
+   - Re-fetches automatically when the Status filter changes
 
-5. **Note Type**:
+6. **Note Type**:
    - Multi-select dropdown of note type names
-   - Select one or many note types to narrow results
+   - Per-dropdown Clear button
 
-6. **Claim Queue**:
+7. **Claim Queue**:
    - Multi-select dropdown of current claim queue statuses
-   - Supports combining multiple statuses for workflow views
-
-7. **Billable Only**: 
-   - Checkbox filter to show only billable encounters
-   - Helps focus on revenue-generating activities
+   - Per-dropdown Clear button
 
 8. **Has Uncommitted Commands**:
-   - Checkbox to show encounters with staged or in-review commands
-   - Useful for operational follow-up
-
-9. **Has Delegated Orders**:
-   - Checkbox to surface encounters with delegated orders that still require attention
+   - Checkbox to show notes with staged or in-review commands
 
 ## Data Columns Displayed
 
-The encounter list displays the following information:
+The worklist displays 8 columns:
 
-1. **Patient Name**: 
-   - Clickable link to patient chart
-   - Includes patient date of birth in parentheses
-
-2. **Owner**: 
-   - Provider responsible for the encounter
-   - Shows credentialed name
-
-3. **Location**: 
-   - Practice location where encounter is taking place
-   - Full location name
-
-4. **Note**: 
-   - Type and title of the encounter note
-   - Clickable link directly to the note
-
-5. **DOS (Date of Service)**: 
-   - When the encounter is scheduled or took place
-   - Formatted as "MMM DD, YYYY"
-
-6. **Billable**: 
-   - Visual indicator (✓ or ✗) showing if encounter is billable
-   - Green checkmark for billable, red X for non-billable
-
-7. **Uncommitted Commands**: 
-   - Count of commands that are staged or in review
-   - Helps identify encounters with pending actions
-
-8. **Delegated Orders**: 
-   - Count of orders that have been delegated to external providers
-   - Shows orders requiring follow-up
-
-9. **Claim Queue**: 
-   - Current status in the billing/claims process
-   - Color-coded badges for different queue states
+1. **Patient Name**: Clickable link to patient chart, includes DOB in parentheses
+2. **Status**: Colored badge showing the note's specific NoteState (e.g., New, Signed, Booked). Color matches the Status filter bucket: green=open, gray=closed, blue=appointment, red=deleted.
+3. **Owner**: Provider responsible for the note (credentialed name)
+4. **Location**: Practice location (full name)
+5. **Note**: Type and title of the note, clickable link directly to the note
+6. **DOS (Date of Service)**: When the encounter is scheduled or took place, formatted as "MMM DD, YYYY"
+7. **Uncommitted Commands**: Count of commands staged or in review — helps identify notes with pending actions
+8. **Claim Queue**: Current status in the billing/claims process, color-coded badge
 
 ## Claim Queue Status Indicators
 

@@ -1,15 +1,15 @@
 {
     "sdk_version": "0.1.4",
-    "plugin_version": "0.2.2",
+    "plugin_version": "0.3.0",
     "name": "notes_worklist",
-    "description": "The Notes Worklist plugin provides a filterable worklist view of notes across their entire lifecycle — scheduled, in progress, finalized, and abandoned. Lets clinicians and ops staff filter by any subset of note states.",
+    "description": "Filterable worklist view of notes across open, closed, and appointment states. Bucket-level Status dropdown with quick-pick presets (All Open / All Closed / All Appointment / All).",
     "url_permissions": [],
     "components": {
         "applications": [
             {
                 "class": "notes_worklist.applications.my_application:MyApplication",
                 "name": "Notes Worklist",
-                "description": "An Application that opens a filterable worklist view of notes across all states (pre-encounter, active, finalized, abandoned).",
+                "description": "Worklist view of notes filterable by Status (Open, Closed, Booked, No show, Canceled, Deleted).",
                 "scope": "global",
                 "icon": "assets/logo.png"
             }
@@ -17,7 +17,7 @@
         "protocols": [
             {
                 "class": "notes_worklist.applications.my_application:NotesWorklistApi",
-                "description": "Provides api to fetch, filter, and sort notes by any subset of NoteStates.",
+                "description": "Provides api to fetch, filter, and sort notes by NoteState filter, with contextual locations.",
                 "data_access": {
                     "event": "",
                     "read": [],
