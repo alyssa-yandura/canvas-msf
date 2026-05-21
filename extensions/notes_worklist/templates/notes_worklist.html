@@ -82,27 +82,6 @@
             cursor: pointer;
         }
 
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        .status-billable {
-            background-color: #e8f5e8;
-            color: #2e7d32;
-        }
-
-        .status-not-billable {
-            background-color: #ffebee;
-            color: #c62828;
-        }
-
         .count-badge {
             display: inline-flex;
             align-items: center;
@@ -878,16 +857,8 @@
                 
                 <div class="filters-group checkbox-group">
                     <label class="checkbox-filter">
-                        <input type="checkbox" id="billableFilter" class="filter-checkbox">
-                        <span>Billable Only</span>
-                    </label>
-                    <label class="checkbox-filter">
                         <input type="checkbox" id="uncommittedCommandsFilter" class="filter-checkbox">
                         <span>Has Uncommitted Commands</span>
-                    </label>
-                    <label class="checkbox-filter">
-                        <input type="checkbox" id="delegatedOrdersFilter" class="filter-checkbox">
-                        <span>Has Delegated Orders</span>
                     </label>
                 </div>
                 
@@ -918,9 +889,7 @@
                     <th>Location</th>
                     <th>Note</th>
                     <th>DOS</th>
-                    <th>Billable</th>
                     <th class="compact">Uncommitted<br>Commands</th>
-                    <th class="compact">Delegated<br>Orders</th>
                     <th>Claim Queue</th>
                 </tr>
             </thead>
@@ -1029,9 +998,7 @@
             note_type_names: [],
             claim_queue_names: [],
             state_filter: statesForOptionIds(FILTER_PRESETS.open),
-            billable_only: false,
             has_uncommitted_commands: false,
-            has_delegated_orders: false,
             patient_search: '',
             dos_start: '',
             dos_end: ''
@@ -1100,7 +1067,7 @@
                         if (value.length > 0) {
                             params.append(key, value.join(','));
                         }
-                    } else if (['billable_only', 'has_uncommitted_commands', 'has_delegated_orders'].includes(key)) {
+                    } else if (key === 'has_uncommitted_commands') {
                         // Always include boolean parameters, even if false
                         params.append(key, value.toString());
                     } else if (value !== null && value !== undefined && value !== '') {
@@ -1131,9 +1098,7 @@
                     noteTitle: encounter.note_title,
                     dos: encounter.dos,
                     dosIso: encounter.dos_iso,
-                    billable: encounter.billable,
                     uncommittedCommands: encounter.uncommitted_commands,
-                    delegatedOrders: encounter.delegated_orders,
                     claimQueue: encounter.claim_queue,
                     created: encounter.created,
                     state: encounter.state
@@ -1233,12 +1198,6 @@
             return div.innerHTML;
         }
 
-        function createBillableStatus(billable) {
-            const iconClass = billable ? 'status-billable' : 'status-not-billable';
-            const icon = billable ? '✓' : '✗';
-            return `<span class="status-badge ${iconClass}">${icon}</span>`;
-        }
-
         function createCountBadge(count, variant = '') {
             if (count === 0) {
                 return '<span class="empty-cell">0</span>';
@@ -1278,9 +1237,7 @@
                     <td>${escapeHtml(encounter.location)}</td>
                     <td><a href="${patientLink}#noteId=${encounter.dbid}" target="_top">${escapeHtml(encounter.noteTitle)}</a></td>
                     <td>${escapeHtml(encounter.dos)}</td>
-                    <td>${createBillableStatus(encounter.billable)}</td>
                     <td class="compact">${createCountBadge(encounter.uncommittedCommands)}</td>
-                    <td class="compact">${createCountBadge(encounter.delegatedOrders, 'blue')}</td>
                     <td>${createClaimStatus(encounter.claimQueue)}</td>
                 `;
 
@@ -1297,11 +1254,10 @@
 
         // Map of table column index → backend sort key. Must stay in sync with
         // the <th> order in the worklist-table markup. Order: Patient Name,
-        // Status, Owner, Location, Note, DOS, Billable, Uncommitted, Delegated,
-        // Claim Queue.
+        // Status, Owner, Location, Note, DOS, Uncommitted, Claim Queue.
         const SORT_COLUMN_KEYS = [
             'patientName', 'state', 'provider', 'location', 'noteTitle',
-            'dos', 'billable', 'uncommittedCommands', 'delegatedOrders', 'claimQueue'
+            'dos', 'uncommittedCommands', 'claimQueue'
         ];
 
         // Sorting functionality
@@ -1753,9 +1709,7 @@
         }
 
         function setupFilterEventListeners() {
-            const billableFilter = document.getElementById('billableFilter');
             const uncommittedCommandsFilter = document.getElementById('uncommittedCommandsFilter');
-            const delegatedOrdersFilter = document.getElementById('delegatedOrdersFilter');
             const clearFiltersButton = document.getElementById('clearFilters');
             const applyFiltersButton = document.getElementById('applyFilters');
             const refreshButton = document.getElementById('refreshButton');
@@ -1769,20 +1723,9 @@
             setupClaimQueueDropdown();
             setupStatusDropdown();
 
-            // Billable filter change
-            billableFilter.addEventListener('change', () => {
-                currentFilters.billable_only = billableFilter.checked;
-                // Don't auto-refresh, wait for action button
-            });
-
             // Uncommitted commands filter change
             uncommittedCommandsFilter.addEventListener('change', () => {
                 currentFilters.has_uncommitted_commands = uncommittedCommandsFilter.checked;
-            });
-
-            // Delegated orders filter change
-            delegatedOrdersFilter.addEventListener('change', () => {
-                currentFilters.has_delegated_orders = delegatedOrdersFilter.checked;
             });
 
             if (patientSearchInput) {
@@ -1818,9 +1761,7 @@
                 currentFilters.location_ids = [];
                 currentFilters.note_type_names = [];
                 currentFilters.claim_queue_names = [];
-                currentFilters.billable_only = false;
                 currentFilters.has_uncommitted_commands = false;
-                currentFilters.has_delegated_orders = false;
                 currentFilters.patient_search = '';
                 currentFilters.dos_start = '';
                 currentFilters.dos_end = '';
@@ -1829,9 +1770,7 @@
                 applyStatePreset('open');
 
                 // Reset UI elements
-                billableFilter.checked = false;
                 uncommittedCommandsFilter.checked = false;
-                delegatedOrdersFilter.checked = false;
                 if (patientSearchInput) {
                     patientSearchInput.value = '';
                 }
