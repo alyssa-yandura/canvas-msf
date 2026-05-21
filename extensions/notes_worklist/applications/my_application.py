@@ -250,6 +250,7 @@ class NotesWorklistApi(StaffSessionAuthMixin, SimpleAPI):
         """Map frontend sort field names to database field names, returning a list of fields."""
         sort_mapping = {
             "patientName": ["patient__first_name", "patient__last_name"],
+            "state": ["current_state__state"],  # Sorts by 3-letter DB code (alphabetical).
             "provider": ["provider__first_name", "provider__last_name"],
             "location": ["location__full_name"],
             "noteTitle": ["note_type_version__name"],

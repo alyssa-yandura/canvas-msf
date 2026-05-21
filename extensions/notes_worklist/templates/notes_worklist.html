@@ -1275,10 +1275,19 @@
             countElement.textContent = `${start}-${end} of ${paginationData.total_count} encounters`;
         }
 
+        // Map of table column index → backend sort key. Must stay in sync with
+        // the <th> order in the worklist-table markup. Order: Patient Name,
+        // Status, Owner, Location, Note, DOS, Billable, Uncommitted, Delegated,
+        // Claim Queue.
+        const SORT_COLUMN_KEYS = [
+            'patientName', 'state', 'provider', 'location', 'noteTitle',
+            'dos', 'billable', 'uncommittedCommands', 'delegatedOrders', 'claimQueue'
+        ];
+
         // Sorting functionality
         async function sortEncounters(columnIndex) {
-            const columns = ['patientName', 'provider', 'location', 'noteTitle', 'dos', 'billable', 'uncommittedCommands', 'delegatedOrders', 'claimQueue'];
-            const key = columns[columnIndex];
+            const key = SORT_COLUMN_KEYS[columnIndex];
+            if (!key) return;
 
             if (sortConfig.key === key) {
                 sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
@@ -1313,10 +1322,9 @@
 
         function updateSortIndicators() {
             const headers = document.querySelectorAll('.worklist-table th');
-            const columns = ['patientName', 'provider', 'location', 'noteTitle', 'dos', 'billable', 'uncommittedCommands', 'delegatedOrders', 'claimQueue'];
-            
+
             headers.forEach((header, index) => {
-                const column = columns[index];
+                const column = SORT_COLUMN_KEYS[index];
                 const isActive = sortConfig.key === column;
                 const direction = sortConfig.direction;
                 

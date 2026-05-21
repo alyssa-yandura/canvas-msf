@@ -1,6 +1,6 @@
 {
     "sdk_version": "0.1.4",
-    "plugin_version": "0.2.1",
+    "plugin_version": "0.2.2",
     "name": "notes_worklist",
     "description": "The Notes Worklist plugin provides a filterable worklist view of notes across their entire lifecycle — scheduled, in progress, finalized, and abandoned. Lets clinicians and ops staff filter by any subset of note states.",
     "url_permissions": [],
