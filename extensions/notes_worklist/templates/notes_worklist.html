@@ -1144,9 +1144,14 @@
             }
         }
 
-        async function fetchLocations() {
+        async function fetchLocations(stateFilterNames = null) {
             try {
-                const response = await fetch(`${API_BASE_URL}/locations`);
+                // When a state_filter is provided, locations are scoped to notes in those
+                // states — keeps the Location dropdown consistent with the current Status filter.
+                const url = (Array.isArray(stateFilterNames) && stateFilterNames.length > 0)
+                    ? `${API_BASE_URL}/locations?state_filter=${stateFilterNames.join(',')}`
+                    : `${API_BASE_URL}/locations`;
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -1157,6 +1162,17 @@
                 console.error('Error fetching locations:', error);
                 return { locations: [] };
             }
+        }
+
+        // Re-fetch locations scoped to the current state_filter, then prune any
+        // selected location_ids that no longer have matching notes. Used whenever
+        // the Status filter selection changes.
+        async function refreshLocationOptions() {
+            await fetchLocations(currentFilters.state_filter);
+            const validIds = new Set(locations.map(l => l.id));
+            currentFilters.location_ids = currentFilters.location_ids.filter(id => validIds.has(id));
+            populateLocationDropdown();
+            updateDropdownDisplay('locationFilter', 'location_ids');
         }
 
         async function fetchNoteTypes() {
@@ -1631,6 +1647,8 @@
                 }
             });
             updateStatusDisplay();
+            // Location options depend on which states are selected — re-fetch to stay in sync.
+            refreshLocationOptions();
         }
 
         function setupStatusDropdown() {
@@ -1672,6 +1690,7 @@
                     currentFilters.state_filter = currentFilters.state_filter.filter(n => n !== stateName);
                 }
                 updateStatusDisplay();
+                refreshLocationOptions();
             });
 
             updateStatusDisplay();
@@ -2006,7 +2025,7 @@
                 // Load initial data from APIs
                 await Promise.all([
                     fetchProviders(),
-                    fetchLocations(),
+                    fetchLocations(currentFilters.state_filter),
                     fetchNoteTypes(),
                     fetchClaimQueues(),
                 ]);

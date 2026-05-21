@@ -64,18 +64,7 @@ class NotesWorklistApi(StaffSessionAuthMixin, SimpleAPI):
         sort_by = self.request.query_params.get("sort_by", "dos")
         sort_direction = self.request.query_params.get("sort_direction", "asc")
 
-        # Resolve which NoteStates to include. Comma-separated names like
-        # "NEW,UNLOCKED,CONVERTED". Unknown names are silently dropped so an
-        # old client sending a now-removed state doesn't break the request.
-        if state_filter:
-            requested_states = [
-                getattr(NoteStates, name.strip())
-                for name in state_filter.split(",")
-                if name.strip() and hasattr(NoteStates, name.strip())
-            ]
-        else:
-            requested_states = list(OPEN_STATES)
-
+        requested_states = self._resolve_states(state_filter)
         note_queryset = Note.objects.filter(current_state__state__in=requested_states)
 
         note_queryset = note_queryset.exclude(note_type_version__category__in=(NoteTypeCategories.MESSAGE,
@@ -198,11 +187,18 @@ class NotesWorklistApi(StaffSessionAuthMixin, SimpleAPI):
 
     @api.get("/locations")
     def get_locations(self) -> list[Response | Effect]:
-        """Get list of practice locations that have notes."""
+        """Get practice locations that have notes in the requested state set.
+
+        Respects the state_filter query param so the Location dropdown stays
+        consistent with the current Status filter — picking "All Closed" only
+        surfaces locations that actually have closed notes.
+        """
+        state_filter = self.request.query_params.get("state_filter")
+        requested_states = self._resolve_states(state_filter)
 
         locations = [{"id": str(n.location.id), "name": n.location.full_name}
                      for n in
-                     Note.objects.filter(current_state__state__in=(NoteStates.NEW, NoteStates.UNLOCKED))
+                     Note.objects.filter(current_state__state__in=requested_states)
                      .filter(location__isnull=False)
                      .order_by("location__full_name", "location__id")
                      .distinct("location__id", "location__full_name")]
@@ -234,6 +230,21 @@ class NotesWorklistApi(StaffSessionAuthMixin, SimpleAPI):
         return [JSONResponse({
             "claim_queues": claim_queues
         }, status_code=HTTPStatus.OK)]
+
+    def _resolve_states(self, state_filter: str | None) -> list:
+        """Parse a comma-separated NoteState name list (e.g. "NEW,UNLOCKED").
+
+        Unknown names are silently dropped so a stale client sending a
+        removed state doesn't break the request. Falls back to OPEN_STATES
+        (matching encounter_list's default) when the param is empty or absent.
+        """
+        if state_filter:
+            return [
+                getattr(NoteStates, name.strip())
+                for name in state_filter.split(",")
+                if name.strip() and hasattr(NoteStates, name.strip())
+            ]
+        return list(OPEN_STATES)
 
     def _get_sort_fields(self, sort_by: str) -> list[str]:
         """Map frontend sort field names to database field names, returning a list of fields."""
