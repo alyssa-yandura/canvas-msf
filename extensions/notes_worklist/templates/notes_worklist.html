@@ -420,9 +420,29 @@
         }
 
         .dropdown-search {
+            display: flex;
+            gap: 6px;
+            align-items: center;
             padding: 0.5rem;
             border-bottom: 1px solid #e5e7eb;
             background: #f9fafb;
+        }
+
+        .dropdown-clear-btn {
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            background-color: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #475569;
+            white-space: nowrap;
+        }
+
+        .dropdown-clear-btn:hover {
+            background-color: #f1f5f9;
+            border-color: #94a3b8;
         }
 
         .search-input {
@@ -1328,11 +1348,13 @@
 
         function populateDropdown(dropdownId, dataArray, filterKey, displayKey) {
             const dropdownOptions = document.getElementById(dropdownId);
-            
-            // Clear existing options and add search input
+
+            // Clear existing options. Search row also holds a per-dropdown Clear button
+            // that deselects everything in this dropdown.
             dropdownOptions.innerHTML = `
                 <div class="dropdown-search">
                     <input type="text" id="${filterKey}-search" placeholder="Search ${displayKey.toLowerCase()}..." class="search-input">
+                    <button type="button" class="dropdown-clear-btn" data-filter-key="${filterKey}">Clear</button>
                 </div>
             `;
             
@@ -1394,23 +1416,32 @@
         function setupDropdown(dropdownId, optionsId, filterKey) {
             const dropdown = document.getElementById(dropdownId);
             const options = document.getElementById(optionsId);
-            
-            // Toggle dropdown - only when clicking the dropdown header, not options
+
+            // Toggle dropdown - only when clicking the dropdown header, not options or clear button
             dropdown.addEventListener('click', (e) => {
-                // Only toggle if clicking on the dropdown header, not on options
-                if (!e.target.closest('.dropdown-option')) {
-                    // Close all other dropdowns first
+                if (!e.target.closest('.dropdown-option') && !e.target.closest('.dropdown-clear-btn')) {
                     closeAllDropdowns();
-                    
-                    // Toggle current dropdown
                     dropdown.classList.toggle('open');
                     options.classList.toggle('show');
                 }
             });
-            
+
+            // Clear button: deselect everything in this dropdown (equivalent to checking "All").
+            options.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('dropdown-clear-btn')) return;
+                e.stopPropagation();
+                currentFilters[filterKey] = [];
+                // Uncheck every option, then re-check the "All" sentinel.
+                options.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.checked = (cb.id === `${filterKey}-all`);
+                });
+                updateDropdownDisplay(dropdownId, filterKey);
+            });
+
             // Handle option selection using event delegation
             options.addEventListener('click', (e) => {
                 e.stopPropagation(); // Prevent click from bubbling up to dropdown
+                if (e.target.classList.contains('dropdown-clear-btn')) return;
                 const option = e.target.closest('.dropdown-option');
                 if (!option) return;
                 
