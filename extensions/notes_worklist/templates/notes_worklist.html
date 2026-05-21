@@ -190,22 +190,22 @@
             white-space: nowrap;
         }
 
-        .state-active {
+        .state-open {
             background-color: #e8f5e8;
             color: #2e7d32;
         }
 
-        .state-pre-encounter {
-            background-color: #e3f2fd;
-            color: #1976d2;
-        }
-
-        .state-finalized {
+        .state-closed {
             background-color: #eceff1;
             color: #546e7a;
         }
 
-        .state-abandoned {
+        .state-appointment {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .state-deleted {
             background-color: #ffebee;
             color: #c62828;
         }
@@ -398,6 +398,7 @@
 
         .dropdown-presets {
             display: flex;
+            flex-wrap: wrap;
             gap: 4px;
             padding: 8px;
             border-bottom: 1px solid #e0e0e0;
@@ -793,6 +794,7 @@
                                 <div class="dropdown-presets">
                                     <button type="button" class="preset-btn" data-preset="open">All Open</button>
                                     <button type="button" class="preset-btn" data-preset="closed">All Closed</button>
+                                    <button type="button" class="preset-btn" data-preset="appointment">All Appointment</button>
                                     <button type="button" class="preset-btn" data-preset="all">All</button>
                                 </div>
                                 <!-- State options populated by JS -->
@@ -963,52 +965,70 @@
         let noteTypes = [];
         let claimQueues = [];
 
-        // NoteStates mapping. value = DB code, name = backend API name,
-        // label = customer-facing display, bucket = visual grouping/coloring.
-        // Order within each bucket determines the dropdown's option order.
-        const STATES = [
-            // Active worklist (default selection)
-            { value: 'NEW',  name: 'NEW',            label: 'New',             bucket: 'active' },
-            { value: 'ULK',  name: 'UNLOCKED',       label: 'Unlocked',        bucket: 'active' },
-            { value: 'PSH',  name: 'PUSHED',         label: 'Charges pushed',  bucket: 'active' },
-            { value: 'UND',  name: 'UNDELETED',      label: 'Undeleted',       bucket: 'active' },
-            { value: 'CVD',  name: 'CONVERTED',      label: 'Checked in',      bucket: 'active' },
-            { value: 'NSW',  name: 'NOSHOW',         label: 'No show',         bucket: 'active' },
-            // Pre-encounter (scheduled, not yet arrived)
-            { value: 'SCH',  name: 'SCHEDULING',     label: 'Scheduling',      bucket: 'pre-encounter' },
-            { value: 'BKD',  name: 'BOOKED',         label: 'Booked',          bucket: 'pre-encounter' },
-            // Finalized (clinical work done)
-            { value: 'SGN',  name: 'SIGNED',         label: 'Signed',          bucket: 'finalized' },
-            { value: 'LKD',  name: 'LOCKED',         label: 'Locked',          bucket: 'finalized' },
-            { value: 'DSC',  name: 'DISCHARGED',     label: 'Discharged',      bucket: 'finalized' },
-            { value: 'CNF',  name: 'CONFIRM_IMPORT', label: 'Confirmed',       bucket: 'finalized' },
-            // Abandoned (canceled/deleted/reverted)
-            { value: 'CLD',  name: 'CANCELLED',      label: 'Canceled',        bucket: 'abandoned' },
-            { value: 'DLT',  name: 'DELETED',        label: 'Deleted',         bucket: 'abandoned' },
-            { value: 'RVT',  name: 'REVERTED',       label: 'Reverted',        bucket: 'abandoned' },
+        // NoteState metadata for table badges. Every NoteState that could
+        // appear on a row needs a label and bucket here, including ones that
+        // aren't in the filter UI — a row could still land in those states.
+        const STATE_INFO = {
+            NEW:            { value: 'NEW', label: 'New',            bucket: 'open' },
+            UNLOCKED:       { value: 'ULK', label: 'Unlocked',       bucket: 'open' },
+            PUSHED:         { value: 'PSH', label: 'Charges pushed', bucket: 'open' },
+            UNDELETED:      { value: 'UND', label: 'Undeleted',      bucket: 'open' },
+            CONVERTED:      { value: 'CVD', label: 'Checked in',     bucket: 'open' },
+            SIGNED:         { value: 'SGN', label: 'Signed',         bucket: 'closed' },
+            LOCKED:         { value: 'LKD', label: 'Locked',         bucket: 'closed' },
+            DISCHARGED:     { value: 'DSC', label: 'Discharged',     bucket: 'closed' },
+            BOOKED:         { value: 'BKD', label: 'Booked',         bucket: 'appointment' },
+            NOSHOW:         { value: 'NSW', label: 'No show',        bucket: 'appointment' },
+            CANCELLED:      { value: 'CLD', label: 'Canceled',       bucket: 'appointment' },
+            DELETED:        { value: 'DLT', label: 'Deleted',        bucket: 'deleted' },
+            // Hidden from filter UI but still labeled if a row lands there.
+            SCHEDULING:     { value: 'SCH', label: 'Scheduling',     bucket: 'open' },
+            REVERTED:       { value: 'RVT', label: 'Reverted',       bucket: 'closed' },
+            CONFIRM_IMPORT: { value: 'CNF', label: 'Confirmed',      bucket: 'closed' },
+        };
+
+        const STATE_BY_VALUE = Object.fromEntries(
+            Object.entries(STATE_INFO).map(([name, info]) => [info.value, { name, ...info }])
+        );
+
+        // Status dropdown options. Each option represents one filter "concept"
+        // that may bundle multiple underlying NoteStates (e.g. "Open" covers 5
+        // sub-states the clinician doesn't need to distinguish).
+        const FILTER_OPTIONS = [
+            { id: 'open',     label: 'Open',     stateNames: ['NEW', 'UNLOCKED', 'PUSHED', 'UNDELETED', 'CONVERTED'] },
+            { id: 'closed',   label: 'Closed',   stateNames: ['SIGNED', 'LOCKED', 'DISCHARGED'] },
+            { id: 'booked',   label: 'Booked',   stateNames: ['BOOKED'] },
+            { id: 'noshow',   label: 'No show',  stateNames: ['NOSHOW'] },
+            { id: 'canceled', label: 'Canceled', stateNames: ['CANCELLED'] },
+            { id: 'deleted',  label: 'Deleted',  stateNames: ['DELETED'] },
         ];
 
-        const STATE_PRESETS = {
-            open:   STATES.filter(s => s.bucket === 'active').map(s => s.name),
-            closed: STATES.filter(s => s.bucket === 'finalized').map(s => s.name),
-            all:    STATES.map(s => s.name),
+        // Quick-pick preset buttons → which filter option ids to select.
+        // "all" deliberately excludes 'deleted' — Deleted is opt-in only.
+        const FILTER_PRESETS = {
+            open:        ['open'],
+            closed:      ['closed'],
+            appointment: ['booked', 'noshow', 'canceled'],
+            all:         ['open', 'closed', 'booked', 'noshow', 'canceled'],
         };
 
-        const STATE_BY_VALUE = Object.fromEntries(STATES.map(s => [s.value, s]));
-        const STATE_BY_NAME  = Object.fromEntries(STATES.map(s => [s.name, s]));
-        const BUCKET_TITLES = {
-            'active': 'Active',
-            'pre-encounter': 'Pre-encounter',
-            'finalized': 'Finalized',
-            'abandoned': 'Abandoned',
-        };
+        function statesForOptionIds(optionIds) {
+            return optionIds.flatMap(id => {
+                const opt = FILTER_OPTIONS.find(o => o.id === id);
+                return opt ? opt.stateNames : [];
+            });
+        }
+
+        function isOptionChecked(option) {
+            return option.stateNames.every(name => currentFilters.state_filter.includes(name));
+        }
 
         let currentFilters = {
             provider_ids: [],
             location_ids: [],
             note_type_names: [],
             claim_queue_names: [],
-            state_filter: [...STATE_PRESETS.open],
+            state_filter: statesForOptionIds(FILTER_PRESETS.open),
             billable_only: false,
             has_uncommitted_commands: false,
             has_delegated_orders: false,
@@ -1592,69 +1612,91 @@
             setupDropdown('claimQueueFilter', 'claim-queue-options', 'claim_queue_names');
         }
 
-        // Status dropdown — custom because of the preset buttons and bucket
-        // sections. Cannot reuse populateDropdown/setupDropdown which assume
-        // a flat list with an "All" sentinel checkbox.
+        // Status dropdown — custom because of the preset buttons and because
+        // each "option" is a logical bucket (Open / Closed / Booked / etc.)
+        // that may bundle multiple underlying NoteStates.
         function populateStatusDropdown() {
             const dropdownOptions = document.getElementById('state-options');
-            const buckets = ['active', 'pre-encounter', 'finalized', 'abandoned'];
-            // Build section HTML for each bucket. Presets div in HTML stays untouched.
-            const sectionsHtml = buckets.map(bucket => {
-                const statesInBucket = STATES.filter(s => s.bucket === bucket);
-                const optionsHtml = statesInBucket.map(s => {
-                    const isSelected = currentFilters.state_filter.includes(s.name);
-                    return `
-                        <div class="dropdown-option" data-state-name="${s.name}">
-                            <input type="checkbox" id="state-${s.name}" ${isSelected ? 'checked' : ''}>
-                            <label for="state-${s.name}">${escapeHtml(s.label)}</label>
-                        </div>`;
-                }).join('');
+            const optionsHtml = FILTER_OPTIONS.map(opt => {
+                const checked = isOptionChecked(opt) ? 'checked' : '';
                 return `
-                    <div class="dropdown-section">
-                        <div class="dropdown-section-title">${BUCKET_TITLES[bucket]}</div>
-                        ${optionsHtml}
+                    <div class="dropdown-option" data-option-id="${opt.id}">
+                        <input type="checkbox" id="state-${opt.id}" ${checked}>
+                        <label for="state-${opt.id}">${escapeHtml(opt.label)}</label>
                     </div>`;
             }).join('');
 
-            // Append sections after the existing presets div (don't replace it)
-            const existingSections = dropdownOptions.querySelectorAll('.dropdown-section');
-            existingSections.forEach(s => s.remove());
-            dropdownOptions.insertAdjacentHTML('beforeend', sectionsHtml);
+            // Remove any previously-rendered options (preset buttons stay).
+            dropdownOptions.querySelectorAll('.dropdown-option, .dropdown-section').forEach(el => el.remove());
+            dropdownOptions.insertAdjacentHTML('beforeend', optionsHtml);
+        }
+
+        function setStatusFromOptionIds(optionIds) {
+            currentFilters.state_filter = statesForOptionIds(optionIds);
+            // Re-sync the visible checkboxes to match the new state.
+            const options = document.getElementById('state-options');
+            options.querySelectorAll('.dropdown-option').forEach(opt => {
+                const optionId = opt.getAttribute('data-option-id');
+                const filterOpt = FILTER_OPTIONS.find(o => o.id === optionId);
+                const checkbox = opt.querySelector('input[type="checkbox"]');
+                if (checkbox && filterOpt) {
+                    checkbox.checked = isOptionChecked(filterOpt);
+                }
+            });
+            updateStatusDisplay();
         }
 
         function updateStatusDisplay() {
             const dropdown = document.getElementById('stateFilter');
             const selectedValue = dropdown.querySelector('.selected-value');
             const selected = currentFilters.state_filter;
-            const matches = preset => preset.length === selected.length && preset.every(n => selected.includes(n));
 
-            let label;
+            // Which preset (if any) does the current selection match exactly?
+            const matchesPreset = (presetIds) => {
+                const expected = statesForOptionIds(presetIds);
+                return expected.length === selected.length && expected.every(n => selected.includes(n));
+            };
+
+            let html;
             if (selected.length === 0) {
-                label = 'None selected';
-            } else if (matches(STATE_PRESETS.open)) {
-                label = 'All Open';
-            } else if (matches(STATE_PRESETS.closed)) {
-                label = 'All Closed';
-            } else if (matches(STATE_PRESETS.all)) {
-                label = 'All';
+                html = '<span class="placeholder-text">None selected</span>';
+            } else if (matchesPreset(FILTER_PRESETS.open)) {
+                html = '<span class="placeholder-text">All Open</span>';
+            } else if (matchesPreset(FILTER_PRESETS.closed)) {
+                html = '<span class="placeholder-text">All Closed</span>';
+            } else if (matchesPreset(FILTER_PRESETS.appointment)) {
+                html = '<span class="placeholder-text">All Appointment</span>';
+            } else if (matchesPreset(FILTER_PRESETS.all)) {
+                html = '<span class="placeholder-text">All</span>';
             } else {
-                label = `${selected.length} selected`;
+                // Show as removable tags. With only 6 options total, tags always fit.
+                const checkedOptions = FILTER_OPTIONS.filter(isOptionChecked);
+                html = checkedOptions.map(opt =>
+                    `<span class="selected-tag">${escapeHtml(opt.label)}<span class="remove-tag" data-option-id="${opt.id}">×</span></span>`
+                ).join('');
             }
-            selectedValue.innerHTML = `<span class="placeholder-text">${label}</span>`;
+            selectedValue.innerHTML = html;
+
+            // Wire remove-tag handlers
+            selectedValue.querySelectorAll('.remove-tag').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const optionId = btn.getAttribute('data-option-id');
+                    const opt = FILTER_OPTIONS.find(o => o.id === optionId);
+                    if (!opt) return;
+                    currentFilters.state_filter = currentFilters.state_filter.filter(n => !opt.stateNames.includes(n));
+                    const checkbox = document.getElementById(`state-${optionId}`);
+                    if (checkbox) checkbox.checked = false;
+                    updateStatusDisplay();
+                    refreshLocationOptions();
+                });
+            });
         }
 
         function applyStatePreset(presetName) {
-            // Reset state_filter to the chosen preset, re-sync checkboxes, refresh display.
-            currentFilters.state_filter = [...STATE_PRESETS[presetName]];
-            const options = document.getElementById('state-options');
-            options.querySelectorAll('.dropdown-option').forEach(opt => {
-                const stateName = opt.getAttribute('data-state-name');
-                const checkbox = opt.querySelector('input[type="checkbox"]');
-                if (checkbox) {
-                    checkbox.checked = currentFilters.state_filter.includes(stateName);
-                }
-            });
-            updateStatusDisplay();
+            const presetIds = FILTER_PRESETS[presetName];
+            if (!presetIds) return;
+            setStatusFromOptionIds(presetIds);
             // Location options depend on which states are selected — re-fetch to stay in sync.
             refreshLocationOptions();
         }
@@ -1663,9 +1705,10 @@
             const dropdown = document.getElementById('stateFilter');
             const options = document.getElementById('state-options');
 
-            // Open/close on header click
+            // Open/close on header click (but not when clicking inside the dropdown body).
             dropdown.addEventListener('click', (e) => {
                 if (e.target.closest('.dropdown-option') || e.target.closest('.preset-btn')) return;
+                if (e.target.closest('.remove-tag')) return;
                 closeAllDropdowns();
                 dropdown.classList.toggle('open');
                 options.classList.toggle('show');
@@ -1679,23 +1722,28 @@
                 });
             });
 
-            // Individual state checkbox toggling
+            // Option checkbox toggling. Each "option" bundles one or more
+            // NoteStates that get added/removed together.
             options.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const option = e.target.closest('.dropdown-option');
-                if (!option) return;
-                const stateName = option.getAttribute('data-state-name');
-                if (!stateName) return;
-                const checkbox = option.querySelector('input[type="checkbox"]');
+                const optionEl = e.target.closest('.dropdown-option');
+                if (!optionEl) return;
+                const optionId = optionEl.getAttribute('data-option-id');
+                if (!optionId) return;
+                const opt = FILTER_OPTIONS.find(o => o.id === optionId);
+                if (!opt) return;
+                const checkbox = optionEl.querySelector('input[type="checkbox"]');
                 if (!checkbox) return;
 
                 checkbox.checked = !checkbox.checked;
                 if (checkbox.checked) {
-                    if (!currentFilters.state_filter.includes(stateName)) {
-                        currentFilters.state_filter.push(stateName);
-                    }
+                    opt.stateNames.forEach(name => {
+                        if (!currentFilters.state_filter.includes(name)) {
+                            currentFilters.state_filter.push(name);
+                        }
+                    });
                 } else {
-                    currentFilters.state_filter = currentFilters.state_filter.filter(n => n !== stateName);
+                    currentFilters.state_filter = currentFilters.state_filter.filter(n => !opt.stateNames.includes(n));
                 }
                 updateStatusDisplay();
                 refreshLocationOptions();
