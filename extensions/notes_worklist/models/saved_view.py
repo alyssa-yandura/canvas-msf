@@ -43,7 +43,9 @@ class SavedWorklistView(CustomModel):
     updated_at = DateTimeField(auto_now=True)
 
     class Meta:
+        # NOTE: Don't add Index(fields=["creator"]) — Canvas auto-indexes FK
+        # columns and rejects duplicate explicit indexes with a ValueError at
+        # model-load time. Only non-FK columns need explicit indexes here.
         indexes = [
-            Index(fields=["creator"]),
             Index(fields=["visibility"]),
         ]
