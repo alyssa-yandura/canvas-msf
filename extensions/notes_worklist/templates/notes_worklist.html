@@ -796,6 +796,10 @@
                                     <button type="button" class="preset-btn" data-preset="appointment">All Appointment</button>
                                     <button type="button" class="preset-btn" data-preset="all">All</button>
                                 </div>
+                                <div class="dropdown-search">
+                                    <input type="text" id="state-search" placeholder="Search statuses..." class="search-input">
+                                    <button type="button" class="dropdown-clear-btn" id="state-clear-btn">Clear</button>
+                                </div>
                                 <!-- State options populated by JS -->
                             </div>
                         </div>
@@ -1696,6 +1700,7 @@
             dropdown.addEventListener('click', (e) => {
                 if (e.target.closest('.dropdown-option') || e.target.closest('.preset-btn')) return;
                 if (e.target.closest('.remove-tag')) return;
+                if (e.target.closest('.dropdown-search') || e.target.closest('.dropdown-clear-btn')) return;
                 closeAllDropdowns();
                 dropdown.classList.toggle('open');
                 options.classList.toggle('show');
@@ -1706,6 +1711,28 @@
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     applyStatePreset(btn.getAttribute('data-preset'));
+                });
+            });
+
+            // Clear button: matches other dropdowns' Clear semantically — "no
+            // constraint, show everything." Uses the "all" preset (still
+            // excludes Deleted per the opt-in rule).
+            document.getElementById('state-clear-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                applyStatePreset('all');
+            });
+
+            // Search input: filters visible state options as the user types.
+            // With only 6 options this is mostly cosmetic, but it matches the
+            // visual pattern of the other multi-select dropdowns.
+            const searchInput = document.getElementById('state-search');
+            searchInput.addEventListener('click', (e) => e.stopPropagation());
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                options.querySelectorAll('.dropdown-option').forEach(opt => {
+                    const labelEl = opt.querySelector('label');
+                    const text = labelEl ? labelEl.textContent.toLowerCase() : '';
+                    opt.style.display = text.includes(term) ? '' : 'none';
                 });
             });
 
