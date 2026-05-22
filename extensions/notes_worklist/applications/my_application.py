@@ -1,3 +1,4 @@
+import json
 from http import HTTPStatus
 
 import arrow
@@ -12,6 +13,8 @@ from canvas_sdk.templates import render_to_string
 from canvas_sdk.v1.data import Note, Staff
 from canvas_sdk.v1.data.claim import ClaimQueue
 from canvas_sdk.v1.data.note import NoteStates, NoteTypeCategories, NoteType
+
+from notes_worklist.models import CustomStaff, SavedWorklistView
 
 
 # Default state set when no state_filter is sent. Matches encounter_list's
@@ -212,6 +215,140 @@ class NotesWorklistApi(StaffSessionAuthMixin, SimpleAPI):
         return [JSONResponse({
             "claim_queues": claim_queues
         }, status_code=HTTPStatus.OK)]
+
+    # ---------------------------------------------------------------------
+    # Saved Views CRUD
+    # ---------------------------------------------------------------------
+
+    @api.get("/views")
+    def list_views(self) -> list[Response | Effect]:
+        """Return saved views visible to the current user.
+
+        Visible = own private views + any view marked visibility='shared'.
+        The frontend uses this on page load to populate the Views dropdown.
+        """
+        staff_id = self.request.headers.get("canvas-logged-in-user-id", "")
+        queryset = (
+            SavedWorklistView.objects.filter(
+                Q(creator__id=staff_id) | Q(visibility="shared")
+            )
+            .select_related("creator")
+            .order_by("name")
+        )
+        views = [self._serialize_view(v, staff_id) for v in queryset]
+        return [JSONResponse({"views": views}, status_code=HTTPStatus.OK)]
+
+    @api.post("/views")
+    def create_view(self) -> list[Response | Effect]:
+        """Create a new saved view for the current user."""
+        staff_id = self.request.headers.get("canvas-logged-in-user-id", "")
+        payload = self._parse_view_payload()
+        if payload is None:
+            return [JSONResponse({"error": "invalid JSON body"}, status_code=HTTPStatus.BAD_REQUEST)]
+
+        name = (payload.get("name") or "").strip()
+        if not name:
+            return [JSONResponse({"error": "name is required"}, status_code=HTTPStatus.BAD_REQUEST)]
+
+        try:
+            creator = CustomStaff.objects.get(id=staff_id)
+        except CustomStaff.DoesNotExist:
+            return [JSONResponse({"error": "current user not found"}, status_code=HTTPStatus.UNAUTHORIZED)]
+
+        view = SavedWorklistView.objects.create(
+            creator=creator,
+            name=name,
+            filters=payload.get("filters") or {},
+            sort_by=(payload.get("sort_by") or "").strip(),
+            sort_direction="desc" if payload.get("sort_direction") == "desc" else "asc",
+            visibility="shared" if payload.get("visibility") == "shared" else "private",
+        )
+        return [JSONResponse({"view": self._serialize_view(view, staff_id)}, status_code=HTTPStatus.CREATED)]
+
+    @api.put("/views")
+    def update_view(self) -> list[Response | Effect]:
+        """Rename / re-share an existing view. Only the creator can update."""
+        staff_id = self.request.headers.get("canvas-logged-in-user-id", "")
+        view_id = self.request.query_params.get("id", "")
+        if not view_id:
+            return [JSONResponse({"error": "id query param required"}, status_code=HTTPStatus.BAD_REQUEST)]
+        payload = self._parse_view_payload()
+        if payload is None:
+            return [JSONResponse({"error": "invalid JSON body"}, status_code=HTTPStatus.BAD_REQUEST)]
+
+        view = self._get_owned_view(view_id, staff_id)
+        if view is None:
+            return [JSONResponse({"error": "not found or not yours"}, status_code=HTTPStatus.NOT_FOUND)]
+
+        if "name" in payload:
+            name = (payload.get("name") or "").strip()
+            if not name:
+                return [JSONResponse({"error": "name cannot be empty"}, status_code=HTTPStatus.BAD_REQUEST)]
+            view.name = name
+        if "filters" in payload:
+            view.filters = payload.get("filters") or {}
+        if "sort_by" in payload:
+            view.sort_by = (payload.get("sort_by") or "").strip()
+        if "sort_direction" in payload:
+            view.sort_direction = "desc" if payload.get("sort_direction") == "desc" else "asc"
+        if "visibility" in payload:
+            view.visibility = "shared" if payload.get("visibility") == "shared" else "private"
+        view.save()
+
+        return [JSONResponse({"view": self._serialize_view(view, staff_id)}, status_code=HTTPStatus.OK)]
+
+    @api.delete("/views")
+    def delete_view(self) -> list[Response | Effect]:
+        """Delete a view. Only the creator can delete."""
+        staff_id = self.request.headers.get("canvas-logged-in-user-id", "")
+        view_id = self.request.query_params.get("id", "")
+        if not view_id:
+            return [JSONResponse({"error": "id query param required"}, status_code=HTTPStatus.BAD_REQUEST)]
+
+        view = self._get_owned_view(view_id, staff_id)
+        if view is None:
+            return [JSONResponse({"error": "not found or not yours"}, status_code=HTTPStatus.NOT_FOUND)]
+        view.delete()
+        return [JSONResponse({"deleted": view_id}, status_code=HTTPStatus.OK)]
+
+    # ---------------------------------------------------------------------
+    # Saved Views helpers
+    # ---------------------------------------------------------------------
+
+    def _parse_view_payload(self) -> dict | None:
+        """Parse the JSON body of a view create/update request."""
+        body = getattr(self.request, "body", None)
+        if body is None:
+            return None
+        if isinstance(body, bytes):
+            body = body.decode("utf-8")
+        try:
+            payload = json.loads(body or "{}")
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return None
+        return payload if isinstance(payload, dict) else None
+
+    def _get_owned_view(self, view_id: str, staff_id: str) -> SavedWorklistView | None:
+        """Look up a view by id, returning None if not found or not owned by staff_id."""
+        try:
+            view = SavedWorklistView.objects.select_related("creator").get(id=view_id)
+        except SavedWorklistView.DoesNotExist:
+            return None
+        return view if view.creator and str(view.creator.id) == str(staff_id) else None
+
+    def _serialize_view(self, view: SavedWorklistView, current_staff_id: str) -> dict:
+        """Build the JSON payload for a single view."""
+        creator_name = view.creator.credentialed_name if view.creator else ""
+        return {
+            "id": str(view.id),
+            "name": view.name,
+            "visibility": view.visibility,
+            "filters": view.filters,
+            "sort_by": view.sort_by,
+            "sort_direction": view.sort_direction,
+            "creator_name": creator_name,
+            "is_mine": bool(view.creator and str(view.creator.id) == str(current_staff_id)),
+        }
 
     def _resolve_states(self, state_filter: str | None) -> list:
         """Parse a comma-separated NoteState name list (e.g. "NEW,UNLOCKED").
