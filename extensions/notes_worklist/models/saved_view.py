@@ -1,5 +1,5 @@
-from canvas_sdk.v1.data import ModelExtension, Staff
-from canvas_sdk.v1.data.base import CustomModel
+from canvas_sdk.v1.data import Staff
+from canvas_sdk.v1.data.base import CustomModel, ModelExtension
 from django.db.models import (
     DO_NOTHING,
     DateTimeField,
