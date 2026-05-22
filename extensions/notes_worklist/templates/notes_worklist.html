@@ -622,6 +622,76 @@
             background-color: #f8f9fa;
         }
 
+        .action-btn {
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            background-color: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #334155;
+        }
+
+        .action-btn:hover {
+            background-color: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        @media print {
+            /* Hide all UI chrome — show only the title and the data table. */
+            .filters-section,
+            .pagination-container,
+            .loading-spinner,
+            .worklist-header .encounter-count {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+                font-size: 10pt;
+            }
+            .worklist-container {
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+            }
+            .worklist-header {
+                border-bottom: 1px solid #000 !important;
+                padding: 8pt 0 !important;
+            }
+            .worklist-title {
+                font-size: 14pt !important;
+            }
+            .worklist-table {
+                font-size: 9pt !important;
+                width: 100% !important;
+            }
+            .worklist-table th,
+            .worklist-table td {
+                padding: 4pt 6pt !important;
+                border: 0.5pt solid #888 !important;
+            }
+            .worklist-table tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            /* Badges degrade to outlined pills so they read clearly in B&W. */
+            .state-badge,
+            .claim-status {
+                border: 1px solid #555 !important;
+                color: #000 !important;
+                background-color: #fff !important;
+                text-transform: none !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            /* Strip link styling so note titles and patient names print as plain text. */
+            .worklist-table a {
+                color: #000 !important;
+                text-decoration: none !important;
+            }
+        }
+
         .filters-container {
             display: flex;
             flex-wrap: wrap;
