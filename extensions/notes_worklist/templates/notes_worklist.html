@@ -1038,11 +1038,15 @@
         };
 
         // API helper functions
-        async function fetchEncounters(filters = {}, page = 1) {
+        async function fetchEncounters(filters = {}, page = 1, options = {}) {
             try {
                 const params = new URLSearchParams();
                 const pageSize = parseInt(document.getElementById('pageSizeSelect')?.value || '25');
                 const combinedFilters = {...currentFilters, ...filters, page, page_size: pageSize};
+                if (options.allResults) {
+                    // Tells the backend to skip pagination — used by Print / Export CSV.
+                    combinedFilters.all_results = 'true';
+                }
                 
                 // Add sorting parameters
                 if (sortConfig.key) {
@@ -1104,9 +1108,12 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                
-                // Update pagination data
-                paginationData = data.pagination;
+
+                // Update pagination data — but skip when fetching all results,
+                // so the paginated view's state is preserved for later restore.
+                if (!options.allResults) {
+                    paginationData = data.pagination;
+                }
                 
                 // Transform API data to match expected format
                 encounterData = data.encounters.map(encounter => ({
@@ -1769,6 +1776,7 @@
         function setupFilterEventListeners() {
             const uncommittedCommandsFilter = document.getElementById('uncommittedCommandsFilter');
             const clearFiltersButton = document.getElementById('clearFilters');
+            const printButton = document.getElementById('printButton');
             const applyFiltersButton = document.getElementById('applyFilters');
             const refreshButton = document.getElementById('refreshButton');
             const patientSearchInput = document.getElementById('patientSearchInput');
@@ -1937,6 +1945,51 @@
                     hideLoadingSpinner();
                 }
             });
+
+            // Print button — fetches ALL matching rows, renders them, triggers
+            // the browser's print dialog, then restores the paginated view after.
+            if (printButton) {
+                printButton.addEventListener('click', () => printWorklist());
+            }
+        }
+
+        async function printWorklist() {
+            const printButton = document.getElementById('printButton');
+            const originalLabel = printButton.textContent;
+            printButton.disabled = true;
+            printButton.textContent = 'Preparing…';
+
+            try {
+                // Fetch every matching row (skips pagination on the backend).
+                // Pass allResults so paginationData is not overwritten — we'll
+                // need it intact to restore the paginated view after printing.
+                await fetchEncounters(currentFilters, 1, { allResults: true });
+                renderTable();
+                // Synchronously open the print dialog; modern browsers return
+                // immediately and dispatch 'afterprint' when the user closes it.
+                window.print();
+            } catch (error) {
+                console.error('Print preparation failed:', error);
+                alert('Could not prepare print view. Please try again.');
+            } finally {
+                printButton.disabled = false;
+                printButton.textContent = originalLabel;
+            }
+
+            // Restore paginated view after the print dialog closes. afterprint
+            // is well-supported in modern browsers; a 30-second fallback prevents
+            // the user from being stranded with hundreds of rows if it doesn't fire.
+            let restored = false;
+            const restore = async () => {
+                if (restored) return;
+                restored = true;
+                await fetchEncounters(currentFilters, paginationData.current_page);
+                renderTable();
+                updateEncounterCount();
+                updatePaginationControls();
+            };
+            window.addEventListener('afterprint', restore, { once: true });
+            setTimeout(restore, 30000);
         }
 
         async function applyFilters() {
