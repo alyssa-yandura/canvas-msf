@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open Encounter Worklist</title>
+    <title>Notes Worklist</title>
     <style>
         * {
             margin: 0;
@@ -617,7 +617,7 @@
 
         /* Filters section styling */
         .filters-section {
-            padding: 16px 20px;
+            padding: 12px 20px;
             border-bottom: 1px solid #e0e0e0;
             background-color: #f8f9fa;
         }
@@ -638,10 +638,10 @@
         }
 
         .filters-group.checkbox-group {
-            width: 100%;
-            margin-top: 8px;
+            /* Lone checkbox after Billable Only and Has Delegated Orders were
+               dropped — let it flow inline instead of forcing a sparse new row. */
             justify-content: flex-start;
-            gap: 24px;
+            gap: 16px;
         }
 
         .filters-group.search-group {
@@ -760,8 +760,8 @@
 <body>
     <div class="worklist-container">
         <div class="worklist-header">
-            <h1 class="worklist-title">Open Encounter Worklist</h1>
-            <span class="encounter-count" id="encounterCount">Loading encounters...</span>
+            <h1 class="worklist-title">Notes Worklist</h1>
+            <span class="encounter-count" id="encounterCount">Loading notes...</span>
         </div>
         
         <div class="filters-section">
@@ -924,7 +924,7 @@
         <!-- Loading Spinner -->
         <div id="loadingSpinner" class="loading-spinner">
             <div class="spinner-circle"></div>
-            <div class="spinner-text">Loading encounters...</div>
+            <div class="spinner-text">Loading notes...</div>
         </div>
         
         <div class="pagination-container" id="paginationContainer">
@@ -1273,7 +1273,7 @@
             const countElement = document.getElementById('encounterCount');
             const start = (paginationData.current_page - 1) * paginationData.page_size + 1;
             const end = Math.min(start + encounterData.length - 1, paginationData.total_count);
-            countElement.textContent = `${start}-${end} of ${paginationData.total_count} encounters`;
+            countElement.textContent = `${start}-${end} of ${paginationData.total_count} notes`;
         }
 
         // Map of table column index → backend sort key. Must stay in sync with
@@ -1907,7 +1907,7 @@
                 try {
                     // Show loading state
                     showLoadingSpinner();
-                    document.getElementById('encounterCount').textContent = 'Loading encounters...';
+                    document.getElementById('encounterCount').textContent = 'Loading notes...';
                     
                     const patientSearchInput = document.getElementById('patientSearchInput');
                     const dosStartInput = document.getElementById('dosStartInput');
@@ -1933,7 +1933,7 @@
                     hideLoadingSpinner();
                 } catch (error) {
                     console.error('Error refreshing encounters:', error);
-                    document.getElementById('encounterCount').textContent = 'Error loading encounters';
+                    document.getElementById('encounterCount').textContent = 'Error loading notes';
                     hideLoadingSpinner();
                 }
             });
@@ -1943,7 +1943,7 @@
             try {
                 // Show loading state
                 showLoadingSpinner();
-                document.getElementById('encounterCount').textContent = 'Loading encounters...';
+                document.getElementById('encounterCount').textContent = 'Loading notes...';
                 
                 const patientSearchInput = document.getElementById('patientSearchInput');
                 const dosStartInput = document.getElementById('dosStartInput');
@@ -1969,7 +1969,7 @@
                 hideLoadingSpinner();
             } catch (error) {
                 console.error('Error applying filters:', error);
-                document.getElementById('encounterCount').textContent = 'Error loading encounters';
+                document.getElementById('encounterCount').textContent = 'Error loading notes';
                 hideLoadingSpinner();
             }
         }
@@ -1996,11 +1996,11 @@
 
             // Update pagination info
             if (paginationData.total_count === 0) {
-                paginationInfo.textContent = 'No encounters found';
+                paginationInfo.textContent = 'No notes found';
             } else {
                 const start = (paginationData.current_page - 1) * paginationData.page_size + 1;
                 const end = Math.min(start + encounterData.length - 1, paginationData.total_count);
-                paginationInfo.textContent = `Showing ${start}-${end} of ${paginationData.total_count} encounters`;
+                paginationInfo.textContent = `Showing ${start}-${end} of ${paginationData.total_count} notes`;
             }
         }
 
@@ -2012,7 +2012,7 @@
             try {
                 // Show loading state
                 showLoadingSpinner();
-                document.getElementById('encounterCount').textContent = 'Loading encounters...';
+                document.getElementById('encounterCount').textContent = 'Loading notes...';
                 
                 await fetchEncounters(currentFilters, page);
                 renderTable();
@@ -2022,7 +2022,7 @@
                 hideLoadingSpinner();
             } catch (error) {
                 console.error('Error loading page:', error);
-                document.getElementById('encounterCount').textContent = 'Error loading encounters';
+                document.getElementById('encounterCount').textContent = 'Error loading notes';
                 hideLoadingSpinner();
             }
         }
@@ -2098,7 +2098,7 @@
 
                 // Show loading spinner for initial load
                 showLoadingSpinner();
-                document.getElementById('encounterCount').textContent = 'Loading encounters...';
+                document.getElementById('encounterCount').textContent = 'Loading notes...';
                 
                 await fetchEncounters();
                 
@@ -2142,7 +2142,7 @@
                 console.error('Error initializing encounter worklist:', error);
                 // Show error state in the UI
                 document.getElementById('worklistBody').innerHTML = 
-                    '<tr><td colspan="9" class="error-row">Error loading encounters. Please refresh the page.</td></tr>';
+                    '<tr><td colspan="9" class="error-row">Error loading notes. Please refresh the page.</td></tr>';
                 document.getElementById('encounterCount').textContent = 'Error loading data';
                 hideLoadingSpinner();
             }

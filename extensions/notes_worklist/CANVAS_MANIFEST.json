@@ -1,6 +1,6 @@
 {
     "sdk_version": "0.1.4",
-    "plugin_version": "0.3.1",
+    "plugin_version": "0.3.2",
     "name": "notes_worklist",
     "description": "Filterable worklist view of notes across open, closed, and appointment states. Bucket-level Status dropdown with quick-pick presets (All Open / All Closed / All Appointment / All).",
     "url_permissions": [],
