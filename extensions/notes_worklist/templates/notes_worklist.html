@@ -42,6 +42,130 @@
             color: #666;
         }
 
+        .views-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .views-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .views-select {
+            padding: 6px 10px;
+            font-size: 13px;
+            background-color: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            min-width: 200px;
+            max-width: 300px;
+            cursor: pointer;
+            color: #1f2937;
+        }
+
+        /* Modal overlay + dialog for the Save view form. */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(15, 23, 42, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal-dialog {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: #6b7280;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 4px;
+        }
+
+        .modal-close:hover { color: #111827; }
+
+        .modal-body {
+            padding: 16px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .modal-field-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-input {
+            padding: 8px 10px;
+            font-size: 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            color: #111827;
+        }
+
+        .modal-radio {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #1f2937;
+            cursor: pointer;
+        }
+
+        .modal-footer {
+            padding: 12px 18px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
         .worklist-table {
             width: 100%;
             border-collapse: collapse;
@@ -831,7 +955,46 @@
     <div class="worklist-container">
         <div class="worklist-header">
             <h1 class="worklist-title">Notes Worklist</h1>
+            <div class="views-section">
+                <label for="viewsSelect" class="views-label">View</label>
+                <select id="viewsSelect" class="views-select">
+                    <option value="">— current filters —</option>
+                </select>
+                <button id="saveViewButton" class="action-btn" type="button">Save view</button>
+                <button id="deleteViewButton" class="action-btn" type="button" disabled>Delete view</button>
+            </div>
             <span class="encounter-count" id="encounterCount">Loading notes...</span>
+        </div>
+
+        <!-- Save view modal -->
+        <div id="saveViewModal" class="modal-overlay hidden">
+            <div class="modal-dialog">
+                <div class="modal-header">
+                    <h2>Save view</h2>
+                    <button id="saveViewClose" class="modal-close" type="button" aria-label="Close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <label class="modal-field">
+                        <span class="modal-field-label">Name</span>
+                        <input type="text" id="saveViewName" class="modal-input" placeholder="e.g. My Open Notes" maxlength="80">
+                    </label>
+                    <div class="modal-field">
+                        <span class="modal-field-label">Visibility</span>
+                        <label class="modal-radio">
+                            <input type="radio" name="saveViewVisibility" value="private" checked>
+                            <span>Only me</span>
+                        </label>
+                        <label class="modal-radio">
+                            <input type="radio" name="saveViewVisibility" value="shared">
+                            <span>Everyone in this practice</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveViewCancel" class="action-btn" type="button">Cancel</button>
+                    <button id="saveViewSubmit" class="apply-filters-btn" type="button">Save</button>
+                </div>
+            </div>
         </div>
         
         <div class="filters-section">
@@ -2065,6 +2228,206 @@
             setTimeout(restore, 30000);
         }
 
+        // -----------------------------------------------------------------
+        // Saved Views
+        // -----------------------------------------------------------------
+
+        // In-memory cache of views loaded from the backend. Indexed by view id.
+        let savedViews = [];
+        let currentViewId = null;
+
+        const LAST_VIEW_KEY = 'notes_worklist:last_view_id';
+
+        async function fetchSavedViews() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/views`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                savedViews = data.views || [];
+            } catch (err) {
+                console.error('Error fetching saved views:', err);
+                savedViews = [];
+            }
+        }
+
+        function renderViewsDropdown() {
+            const select = document.getElementById('viewsSelect');
+            if (!select) return;
+            const ownerLabel = (v) => v.is_mine ? '' : ` (shared by ${v.creator_name || 'unknown'})`;
+            const options = ['<option value="">— current filters —</option>']
+                .concat(savedViews.map(v =>
+                    `<option value="${v.id}">${escapeHtml(v.name)}${escapeHtml(ownerLabel(v))}</option>`
+                ));
+            select.innerHTML = options.join('');
+            select.value = currentViewId || '';
+            updateDeleteViewButton();
+        }
+
+        function updateDeleteViewButton() {
+            const btn = document.getElementById('deleteViewButton');
+            if (!btn) return;
+            const view = savedViews.find(v => v.id === currentViewId);
+            btn.disabled = !(view && view.is_mine);
+        }
+
+        function applySavedView(viewId) {
+            const view = savedViews.find(v => v.id === viewId);
+            if (!view) {
+                currentViewId = null;
+                localStorage.removeItem(LAST_VIEW_KEY);
+                updateDeleteViewButton();
+                return;
+            }
+            // Replace currentFilters with the view's snapshot. Use spread so
+            // we don't share array references with the saved view object.
+            const f = view.filters || {};
+            currentFilters = {
+                provider_ids: [...(f.provider_ids || [])],
+                location_ids: [...(f.location_ids || [])],
+                note_type_names: [...(f.note_type_names || [])],
+                claim_queue_names: [...(f.claim_queue_names || [])],
+                state_filter: (f.state_filter && f.state_filter.length)
+                    ? [...f.state_filter]
+                    : statesForOptionIds(FILTER_PRESETS.open),
+                has_uncommitted_commands: !!f.has_uncommitted_commands,
+                patient_search: f.patient_search || '',
+                dos_start: f.dos_start || '',
+                dos_end: f.dos_end || '',
+            };
+            sortConfig = {
+                key: view.sort_by || null,
+                direction: view.sort_direction === 'desc' ? 'desc' : 'asc',
+            };
+            currentViewId = viewId;
+            localStorage.setItem(LAST_VIEW_KEY, viewId);
+
+            // Sync all the filter UI controls with the new state.
+            populateProviderDropdown();
+            populateLocationDropdown();
+            populateNoteTypeDropdown();
+            populateClaimQueueDropdown();
+            populateStatusDropdown();
+            updateDropdownDisplay('providerFilter', 'provider_ids');
+            updateDropdownDisplay('locationFilter', 'location_ids');
+            updateDropdownDisplay('noteTypeFilter', 'note_type_names');
+            updateDropdownDisplay('claimQueueFilter', 'claim_queue_names');
+            updateStatusDisplay();
+
+            const patientInput = document.getElementById('patientSearchInput');
+            if (patientInput) patientInput.value = currentFilters.patient_search;
+            const dosStart = document.getElementById('dosStartInput');
+            if (dosStart) dosStart.value = currentFilters.dos_start;
+            const dosEnd = document.getElementById('dosEndInput');
+            if (dosEnd) dosEnd.value = currentFilters.dos_end;
+            const uncomm = document.getElementById('uncommittedCommandsFilter');
+            if (uncomm) uncomm.checked = !!currentFilters.has_uncommitted_commands;
+
+            updateDeleteViewButton();
+            applyFilters();
+        }
+
+        function openSaveViewModal() {
+            const modal = document.getElementById('saveViewModal');
+            const nameInput = document.getElementById('saveViewName');
+            modal.classList.remove('hidden');
+            nameInput.value = '';
+            document.querySelector('input[name="saveViewVisibility"][value="private"]').checked = true;
+            setTimeout(() => nameInput.focus(), 50);
+        }
+
+        function closeSaveViewModal() {
+            document.getElementById('saveViewModal').classList.add('hidden');
+        }
+
+        async function submitSaveView() {
+            const nameInput = document.getElementById('saveViewName');
+            const name = nameInput.value.trim();
+            if (!name) {
+                nameInput.focus();
+                return;
+            }
+            const visibility = document.querySelector('input[name="saveViewVisibility"]:checked').value;
+            const submitBtn = document.getElementById('saveViewSubmit');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving…';
+            try {
+                const response = await fetch(`${API_BASE_URL}/views`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        visibility,
+                        filters: { ...currentFilters },
+                        sort_by: sortConfig.key || '',
+                        sort_direction: sortConfig.direction || 'asc',
+                    }),
+                });
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    alert(`Could not save view: ${errData.error || response.statusText}`);
+                    return;
+                }
+                const data = await response.json();
+                if (data.view) {
+                    savedViews.push(data.view);
+                    savedViews.sort((a, b) => a.name.localeCompare(b.name));
+                    currentViewId = data.view.id;
+                    localStorage.setItem(LAST_VIEW_KEY, currentViewId);
+                    renderViewsDropdown();
+                }
+                closeSaveViewModal();
+            } catch (err) {
+                console.error('Save view failed:', err);
+                alert('Could not save view. Please try again.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save';
+            }
+        }
+
+        async function deleteCurrentView() {
+            const view = savedViews.find(v => v.id === currentViewId);
+            if (!view || !view.is_mine) return;
+            if (!confirm(`Delete view "${view.name}"?`)) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/views?id=${encodeURIComponent(currentViewId)}`, {
+                    method: 'DELETE',
+                });
+                if (!response.ok) {
+                    alert('Could not delete view.');
+                    return;
+                }
+                savedViews = savedViews.filter(v => v.id !== currentViewId);
+                currentViewId = null;
+                localStorage.removeItem(LAST_VIEW_KEY);
+                renderViewsDropdown();
+            } catch (err) {
+                console.error('Delete view failed:', err);
+                alert('Could not delete view. Please try again.');
+            }
+        }
+
+        function setupSavedViewsListeners() {
+            const select = document.getElementById('viewsSelect');
+            const saveBtn = document.getElementById('saveViewButton');
+            const delBtn = document.getElementById('deleteViewButton');
+            const modal = document.getElementById('saveViewModal');
+            const closeBtn = document.getElementById('saveViewClose');
+            const cancelBtn = document.getElementById('saveViewCancel');
+            const submitBtn = document.getElementById('saveViewSubmit');
+            const nameInput = document.getElementById('saveViewName');
+
+            select.addEventListener('change', (e) => applySavedView(e.target.value));
+            saveBtn.addEventListener('click', openSaveViewModal);
+            delBtn.addEventListener('click', deleteCurrentView);
+            closeBtn.addEventListener('click', closeSaveViewModal);
+            cancelBtn.addEventListener('click', closeSaveViewModal);
+            submitBtn.addEventListener('click', submitSaveView);
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); submitSaveView(); }
+            });
+        }
+
         async function applyFilters() {
             try {
                 // Show loading state
@@ -2207,6 +2570,7 @@
                     fetchLocations(currentFilters.state_filter),
                     fetchNoteTypes(),
                     fetchClaimQueues(),
+                    fetchSavedViews(),
                 ]);
 
                 // Populate all filter dropdowns
@@ -2215,6 +2579,7 @@
                 populateNoteTypeDropdown();
                 populateClaimQueueDropdown();
                 populateStatusDropdown();
+                renderViewsDropdown();
 
                 // Initialize page size dropdown
                 const pageSizeSelect = document.getElementById('pageSizeSelect');
@@ -2225,11 +2590,20 @@
                 // Show loading spinner for initial load
                 showLoadingSpinner();
                 document.getElementById('encounterCount').textContent = 'Loading notes...';
-                
-                await fetchEncounters();
-                
+
+                // Restore last-selected view (per-browser via localStorage) if it still
+                // exists and is still visible to the user. Otherwise use default filters.
+                const savedLastViewId = localStorage.getItem(LAST_VIEW_KEY);
+                if (savedLastViewId && savedViews.some(v => v.id === savedLastViewId)) {
+                    applySavedView(savedLastViewId);
+                } else {
+                    if (savedLastViewId) localStorage.removeItem(LAST_VIEW_KEY);
+                    await fetchEncounters();
+                }
+
                 // Setup filter event listeners
                 setupFilterEventListeners();
+                setupSavedViewsListeners();
 
                 // Setup sorting listeners
                 setupSortingListeners();
