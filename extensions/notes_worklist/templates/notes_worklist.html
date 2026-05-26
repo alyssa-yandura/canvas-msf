@@ -65,74 +65,163 @@
             gap: 8px;
         }
 
-        .kebab-wrapper {
+        .views-pill-wrapper {
             position: relative;
         }
 
-        .kebab-btn {
-            padding: 4px 8px;
-            font-size: 18px;
-            line-height: 1;
-            background-color: transparent;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            color: var(--text-muted);
-        }
-
-        .kebab-btn:hover {
-            background-color: var(--surface-alt);
-            border-color: var(--border);
-        }
-
-        .kebab-menu {
-            position: absolute;
-            top: calc(100% + 4px);
-            right: 0;
-            min-width: 180px;
-            background: #fff;
+        .views-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background-color: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 4px;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+            border-radius: 999px;
+            cursor: pointer;
+            color: var(--text-body);
+            font-size: 13px;
+            font-weight: 500;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+
+        .views-pill:hover {
+            background-color: var(--surface-alt);
+            border-color: var(--text-muted);
+        }
+
+        .views-pill[aria-expanded="true"] {
+            background-color: var(--surface-alt);
+            border-color: var(--teal-deep);
+        }
+
+        .views-pill-icon, .views-pill-chevron {
+            width: 14px;
+            height: 14px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        #viewsPillLabel {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .views-popover {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            min-width: 260px;
+            max-width: 320px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 14px rgba(13, 32, 60, 0.12);
             z-index: 50;
             padding: 4px 0;
         }
 
-        .kebab-menu.hidden {
+        .views-popover.hidden {
             display: none;
         }
 
-        .kebab-item {
+        .views-popover-list {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .views-popover-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--text-body);
+            font-size: 13px;
+        }
+
+        .views-popover-row:hover {
+            background-color: var(--surface-alt);
+        }
+
+        .views-popover-row.active {
+            background-color: var(--surface-alt);
+        }
+
+        .views-popover-row.active .views-popover-name {
+            color: var(--teal-deep);
+            font-weight: 600;
+        }
+
+        .views-popover-row-text {
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .views-popover-name {
             display: block;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .views-popover-meta {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .views-popover-delete {
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .views-popover-delete:hover {
+            color: #c62828;
+            background-color: var(--surface-alt);
+        }
+
+        .views-popover-empty {
+            padding: 12px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .views-popover-divider {
+            height: 1px;
+            background-color: var(--border);
+            margin: 4px 0;
+        }
+
+        .views-popover-action {
+            display: flex;
+            align-items: center;
+            gap: 8px;
             width: 100%;
             padding: 8px 12px;
             background: none;
             border: none;
             text-align: left;
             font-size: 13px;
+            font-weight: 500;
+            color: var(--teal-deep);
             cursor: pointer;
-            color: var(--text-body);
         }
 
-        .kebab-item:hover:not(:disabled) {
+        .views-popover-action:hover {
             background-color: var(--surface-alt);
-        }
-
-        .kebab-item:disabled {
-            color: #9ca3af;
-            cursor: not-allowed;
-        }
-
-        .views-select {
-            padding: 6px 10px;
-            font-size: 13px;
-            background-color: #fff;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            min-width: 200px;
-            max-width: 300px;
-            cursor: pointer;
-            color: var(--text-body);
         }
 
         /* Modal overlay + dialog for the Save view form. */
@@ -1052,14 +1141,25 @@
         <div class="worklist-header">
             <h1 class="worklist-title">Notes Worklist</h1>
             <div class="views-section">
-                <select id="viewsSelect" class="views-select">
-                    <option value="">— current filters —</option>
-                </select>
-                <div class="kebab-wrapper">
-                    <button id="viewMenuButton" class="kebab-btn" type="button" aria-label="View options" aria-haspopup="true">⋮</button>
-                    <div id="viewMenu" class="kebab-menu hidden" role="menu">
-                        <button id="saveViewMenuItem" class="kebab-item" type="button" role="menuitem">Save current as…</button>
-                        <button id="deleteViewMenuItem" class="kebab-item" type="button" role="menuitem" disabled>Delete current view</button>
+                <div class="views-pill-wrapper">
+                    <button id="viewsPillButton" class="views-pill" type="button" aria-haspopup="true" aria-expanded="false">
+                        <svg class="views-pill-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                            <path d="M2 3h12l-4.5 5.5V13L6.5 11V8.5L2 3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                        </svg>
+                        <span id="viewsPillLabel">Current filters</span>
+                        <svg class="views-pill-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                            <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div id="viewsPopover" class="views-popover hidden" role="menu">
+                        <div id="viewsList" class="views-popover-list">
+                            <!-- View rows populated by JS -->
+                        </div>
+                        <div class="views-popover-divider"></div>
+                        <button id="viewsPopoverSave" class="views-popover-action" type="button">
+                            <span aria-hidden="true">＋</span>
+                            <span>Save current as…</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -2353,24 +2453,43 @@
         }
 
         function renderViewsDropdown() {
-            const select = document.getElementById('viewsSelect');
-            if (!select) return;
-            const ownerLabel = (v) => v.is_mine ? '' : ` (shared by ${v.creator_name || 'unknown'})`;
-            const options = ['<option value="">— current filters —</option>']
-                .concat(savedViews.map(v =>
-                    `<option value="${v.id}">${escapeHtml(v.name)}${escapeHtml(ownerLabel(v))}</option>`
-                ));
-            select.innerHTML = options.join('');
-            select.value = currentViewId || '';
-            updateDeleteViewButton();
+            // Update the pill's label (current view name or fallback).
+            const labelEl = document.getElementById('viewsPillLabel');
+            const activeView = savedViews.find(v => v.id === currentViewId);
+            if (labelEl) {
+                labelEl.textContent = activeView ? activeView.name : 'Current filters';
+            }
+
+            // Repopulate the popover list. Each row is clickable to apply;
+            // owned views get an X delete button on the right.
+            const list = document.getElementById('viewsList');
+            if (!list) return;
+            if (savedViews.length === 0) {
+                list.innerHTML = '<div class="views-popover-empty">No saved views yet</div>';
+                return;
+            }
+            list.innerHTML = savedViews.map(v => {
+                const activeClass = v.id === currentViewId ? ' active' : '';
+                const meta = v.is_mine
+                    ? (v.visibility === 'shared' ? 'Shared with practice' : 'Private')
+                    : `Shared by ${escapeHtml(v.creator_name || 'unknown')}`;
+                const deleteBtn = v.is_mine
+                    ? `<button class="views-popover-delete" data-view-id="${v.id}" type="button" aria-label="Delete view" title="Delete">×</button>`
+                    : '';
+                return `
+                    <div class="views-popover-row${activeClass}" data-view-id="${v.id}" role="menuitem">
+                        <span class="views-popover-row-text">
+                            <span class="views-popover-name">${escapeHtml(v.name)}</span>
+                            <span class="views-popover-meta">${meta}</span>
+                        </span>
+                        ${deleteBtn}
+                    </div>`;
+            }).join('');
         }
 
-        function updateDeleteViewButton() {
-            const btn = document.getElementById('deleteViewMenuItem');
-            if (!btn) return;
-            const view = savedViews.find(v => v.id === currentViewId);
-            btn.disabled = !(view && view.is_mine);
-        }
+        // No-op shim — old kebab Delete button is gone; per-row X buttons in
+        // the popover handle delete now. Kept for any leftover callers.
+        function updateDeleteViewButton() {}
 
         function applySavedView(viewId) {
             const view = savedViews.find(v => v.id === viewId);
@@ -2515,21 +2634,23 @@
             }
         }
 
-        async function deleteCurrentView() {
-            const view = savedViews.find(v => v.id === currentViewId);
+        async function deleteViewById(viewId) {
+            const view = savedViews.find(v => v.id === viewId);
             if (!view || !view.is_mine) return;
             if (!confirm(`Delete view "${view.name}"?`)) return;
             try {
-                const response = await fetch(`${API_BASE_URL}/views?id=${encodeURIComponent(currentViewId)}`, {
+                const response = await fetch(`${API_BASE_URL}/views?id=${encodeURIComponent(viewId)}`, {
                     method: 'DELETE',
                 });
                 if (!response.ok) {
                     alert('Could not delete view.');
                     return;
                 }
-                savedViews = savedViews.filter(v => v.id !== currentViewId);
-                currentViewId = null;
-                localStorage.removeItem(LAST_VIEW_KEY);
+                savedViews = savedViews.filter(v => v.id !== viewId);
+                if (currentViewId === viewId) {
+                    currentViewId = null;
+                    localStorage.removeItem(LAST_VIEW_KEY);
+                }
                 renderViewsDropdown();
             } catch (err) {
                 console.error('Delete view failed:', err);
@@ -2538,35 +2659,61 @@
         }
 
         function setupSavedViewsListeners() {
-            const select = document.getElementById('viewsSelect');
-            const kebabBtn = document.getElementById('viewMenuButton');
-            const kebabMenu = document.getElementById('viewMenu');
-            const saveItem = document.getElementById('saveViewMenuItem');
-            const delItem = document.getElementById('deleteViewMenuItem');
+            const pillBtn = document.getElementById('viewsPillButton');
+            const popover = document.getElementById('viewsPopover');
+            const list = document.getElementById('viewsList');
+            const saveAction = document.getElementById('viewsPopoverSave');
             const closeBtn = document.getElementById('saveViewClose');
             const cancelBtn = document.getElementById('saveViewCancel');
             const submitBtn = document.getElementById('saveViewSubmit');
             const nameInput = document.getElementById('saveViewName');
 
-            select.addEventListener('change', (e) => applySavedView(e.target.value));
+            const closePopover = () => {
+                popover.classList.add('hidden');
+                pillBtn.setAttribute('aria-expanded', 'false');
+            };
+            const openPopover = () => {
+                popover.classList.remove('hidden');
+                pillBtn.setAttribute('aria-expanded', 'true');
+            };
 
-            // Kebab menu: toggle open on button click, close on outside click,
-            // close after any menu item action.
-            const closeKebab = () => kebabMenu.classList.add('hidden');
-            kebabBtn.addEventListener('click', (e) => {
+            // Pill button toggles the popover.
+            pillBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                kebabMenu.classList.toggle('hidden');
+                if (popover.classList.contains('hidden')) openPopover();
+                else closePopover();
             });
+
+            // Close on outside click.
             document.addEventListener('click', (e) => {
-                if (!kebabMenu.classList.contains('hidden') &&
-                    !kebabMenu.contains(e.target) &&
-                    e.target !== kebabBtn) {
-                    closeKebab();
+                if (popover.classList.contains('hidden')) return;
+                if (popover.contains(e.target) || pillBtn.contains(e.target)) return;
+                closePopover();
+            });
+
+            // Delegate clicks inside the views list: row click applies the view,
+            // X button deletes the view (event.stopPropagation prevents apply).
+            list.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.views-popover-delete');
+                if (deleteBtn) {
+                    e.stopPropagation();
+                    deleteViewById(deleteBtn.getAttribute('data-view-id'));
+                    return;
+                }
+                const row = e.target.closest('.views-popover-row');
+                if (row) {
+                    applySavedView(row.getAttribute('data-view-id'));
+                    closePopover();
                 }
             });
-            saveItem.addEventListener('click', () => { closeKebab(); openSaveViewModal(); });
-            delItem.addEventListener('click', () => { closeKebab(); deleteCurrentView(); });
 
+            // Save action opens the modal (and closes the popover).
+            saveAction.addEventListener('click', () => {
+                closePopover();
+                openSaveViewModal();
+            });
+
+            // Save view modal handlers (unchanged from the previous design).
             closeBtn.addEventListener('click', closeSaveViewModal);
             cancelBtn.addEventListener('click', closeSaveViewModal);
             submitBtn.addEventListener('click', submitSaveView);
