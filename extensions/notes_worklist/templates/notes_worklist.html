@@ -1305,12 +1305,21 @@
         // that may bundle multiple underlying NoteStates (e.g. "Open" covers 5
         // sub-states the clinician doesn't need to distinguish).
         const FILTER_OPTIONS = [
-            { id: 'open',     label: 'Open',     stateNames: ['NEW', 'UNLOCKED', 'PUSHED', 'UNDELETED', 'CONVERTED'] },
-            { id: 'closed',   label: 'Closed',   stateNames: ['SIGNED', 'LOCKED', 'DISCHARGED'] },
-            { id: 'booked',   label: 'Booked',   stateNames: ['BOOKED'] },
-            { id: 'noshow',   label: 'No show',  stateNames: ['NOSHOW'] },
-            { id: 'canceled', label: 'Canceled', stateNames: ['CANCELLED'] },
-            { id: 'deleted',  label: 'Deleted',  stateNames: ['DELETED'] },
+            { id: 'open',     label: 'Open',     section: 'notes',        stateNames: ['NEW', 'UNLOCKED', 'PUSHED', 'UNDELETED', 'CONVERTED'] },
+            { id: 'closed',   label: 'Closed',   section: 'notes',        stateNames: ['SIGNED', 'LOCKED', 'DISCHARGED'] },
+            { id: 'booked',   label: 'Booked',   section: 'appointments', stateNames: ['BOOKED'] },
+            { id: 'noshow',   label: 'No show',  section: 'appointments', stateNames: ['NOSHOW'] },
+            { id: 'canceled', label: 'Canceled', section: 'appointments', stateNames: ['CANCELLED'] },
+            { id: 'deleted',  label: 'Deleted',  section: 'other',        stateNames: ['DELETED'] },
+        ];
+
+        // Order and titles for the section dividers in the dropdown. Groups the
+        // filter options so users can tell which statuses are note-states vs
+        // appointment-states at a glance.
+        const FILTER_SECTIONS = [
+            { id: 'notes',        title: 'Notes' },
+            { id: 'appointments', title: 'Appointments' },
+            { id: 'other',        title: 'Other' },
         ];
 
         // Quick-pick preset buttons → which filter option ids to select.
@@ -1932,18 +1941,31 @@
         // that may bundle multiple underlying NoteStates.
         function populateStatusDropdown() {
             const dropdownOptions = document.getElementById('state-options');
-            const optionsHtml = FILTER_OPTIONS.map(opt => {
-                const checked = isOptionChecked(opt) ? 'checked' : '';
+
+            // Group options by section so the dropdown can show NOTES vs
+            // APPOINTMENTS dividers — clinicians shouldn't have to remember
+            // which flat option is for which kind of record.
+            const sectionsHtml = FILTER_SECTIONS.map(section => {
+                const optionsInSection = FILTER_OPTIONS.filter(o => o.section === section.id);
+                if (optionsInSection.length === 0) return '';
+                const optionsHtml = optionsInSection.map(opt => {
+                    const checked = isOptionChecked(opt) ? 'checked' : '';
+                    return `
+                        <div class="dropdown-option" data-option-id="${opt.id}">
+                            <input type="checkbox" id="state-${opt.id}" ${checked}>
+                            <label for="state-${opt.id}">${escapeHtml(opt.label)}</label>
+                        </div>`;
+                }).join('');
                 return `
-                    <div class="dropdown-option" data-option-id="${opt.id}">
-                        <input type="checkbox" id="state-${opt.id}" ${checked}>
-                        <label for="state-${opt.id}">${escapeHtml(opt.label)}</label>
+                    <div class="dropdown-section">
+                        <div class="dropdown-section-title">${escapeHtml(section.title)}</div>
+                        ${optionsHtml}
                     </div>`;
             }).join('');
 
             // Remove any previously-rendered options (preset buttons stay).
             dropdownOptions.querySelectorAll('.dropdown-option, .dropdown-section').forEach(el => el.remove());
-            dropdownOptions.insertAdjacentHTML('beforeend', optionsHtml);
+            dropdownOptions.insertAdjacentHTML('beforeend', sectionsHtml);
         }
 
         function setStatusFromOptionIds(optionIds) {
