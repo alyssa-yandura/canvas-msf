@@ -798,36 +798,6 @@
             background-color: var(--surface-alt);
         }
 
-        .more-filters-toggle {
-            padding: 6px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            background-color: transparent;
-            border: 1px dashed #94a3b8;
-            border-radius: 4px;
-            cursor: pointer;
-            color: var(--text-muted);
-            align-self: flex-end;
-            margin-bottom: 0;
-        }
-
-        .more-filters-toggle:hover {
-            background-color: var(--surface-alt);
-            border-color: var(--text-dim);
-        }
-
-        .more-filters {
-            border-top: 1px dashed var(--border);
-            padding-top: 8px;
-            margin-top: 4px;
-        }
-
-        /* Generic utility — overrides element-specific display. */
-        .more-filters.hidden,
-        .filters-group.hidden {
-            display: none !important;
-        }
-
         .action-btn {
             padding: 6px 14px;
             font-size: 13px;
@@ -951,9 +921,27 @@
         }
 
         .filter-label {
-            font-size: 12px;
-            font-weight: 500;
-            color: #555;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        /* Full-width filter rows so primary (Patient, DOS, Status, Owner,
+           Location) and secondary (Note Type, Claim Queue, Has Uncommitted)
+           stack vertically with their own row of fields. */
+        .filters-row {
+            width: 100%;
+        }
+
+        /* Divider between filter rows. */
+        .filters-row + .filters-row {
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+            margin-top: 4px;
         }
 
         .filter-select {
@@ -1085,23 +1073,21 @@
         
         <div class="filters-section">
             <div class="filters-container">
-                <div class="filters-group search-group">
+                <div class="filters-group filters-row">
                     <div class="filter-field wide">
-                        <label class="filter-label">Patient Search</label>
+                        <label class="filter-label">Patient</label>
                         <input type="text" id="patientSearchInput" class="patient-search-input" placeholder="Search by name...">
                     </div>
 
                     <div class="filter-field">
-                        <label class="filter-label">DOS</label>
+                        <label class="filter-label">Date of Service</label>
                         <div class="date-range-inputs">
                             <input type="date" id="dosStartInput" class="date-input">
-                            <span>to</span>
+                            <span>→</span>
                             <input type="date" id="dosEndInput" class="date-input">
                         </div>
                     </div>
-                </div>
 
-                <div class="filters-group">
                     <div class="filter-field">
                         <label class="filter-label">Status</label>
                         <div class="filter-dropdown" id="stateFilter" data-values="">
@@ -1142,7 +1128,7 @@
                         </div>
                     </div>
                     
-                    <div class="filter-field wide">
+                    <div class="filter-field">
                         <label class="filter-label">Location</label>
                         <div class="filter-dropdown" id="locationFilter" data-values="">
                             <div class="selected-value">
@@ -1159,11 +1145,9 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <button id="moreFiltersToggle" class="more-filters-toggle" type="button" aria-expanded="false">+ More filters</button>
                 </div>
 
-                <div id="moreFiltersGroup" class="filters-group more-filters hidden">
+                <div id="moreFiltersGroup" class="filters-group filters-row">
                     <div class="filter-field">
                         <label class="filter-label">Note Type</label>
                         <div class="filter-dropdown" id="noteTypeFilter" data-values="">
@@ -2117,7 +2101,6 @@
             const clearFiltersButton = document.getElementById('clearFilters');
             const printButton = document.getElementById('printButton');
             const applyFiltersButton = document.getElementById('applyFilters');
-            const moreFiltersToggle = document.getElementById('moreFiltersToggle');
             const patientSearchInput = document.getElementById('patientSearchInput');
             const dosStartInput = document.getElementById('dosStartInput');
             const dosEndInput = document.getElementById('dosEndInput');
@@ -2255,15 +2238,6 @@
                 printButton.addEventListener('click', () => printWorklist());
             }
 
-            // "More filters" disclosure toggle.
-            if (moreFiltersToggle) {
-                moreFiltersToggle.addEventListener('click', () => {
-                    const group = document.getElementById('moreFiltersGroup');
-                    const isHidden = group.classList.toggle('hidden');
-                    moreFiltersToggle.setAttribute('aria-expanded', String(!isHidden));
-                    moreFiltersToggle.textContent = isHidden ? '+ More filters' : '− Fewer filters';
-                });
-            }
         }
 
         async function printWorklist() {
@@ -2340,23 +2314,6 @@
             updateDeleteViewButton();
         }
 
-        function expandMoreFiltersIfNeeded() {
-            const hasMore =
-                (currentFilters.note_type_names && currentFilters.note_type_names.length > 0) ||
-                (currentFilters.claim_queue_names && currentFilters.claim_queue_names.length > 0) ||
-                currentFilters.has_uncommitted_commands;
-            if (!hasMore) return;
-            const group = document.getElementById('moreFiltersGroup');
-            const toggle = document.getElementById('moreFiltersToggle');
-            if (group && group.classList.contains('hidden')) {
-                group.classList.remove('hidden');
-                if (toggle) {
-                    toggle.setAttribute('aria-expanded', 'true');
-                    toggle.textContent = '− Fewer filters';
-                }
-            }
-        }
-
         function updateDeleteViewButton() {
             const btn = document.getElementById('deleteViewMenuItem');
             if (!btn) return;
@@ -2415,11 +2372,6 @@
             if (dosEnd) dosEnd.value = currentFilters.dos_end;
             const uncomm = document.getElementById('uncommittedCommandsFilter');
             if (uncomm) uncomm.checked = !!currentFilters.has_uncommitted_commands;
-
-            // If the saved view sets any "More filters" (Note Type, Claim Queue,
-            // Has Uncommitted Commands), expand the disclosure so the user can
-            // see them — otherwise the filter would silently affect the worklist.
-            expandMoreFiltersIfNeeded();
 
             updateDeleteViewButton();
             applyFilters();
