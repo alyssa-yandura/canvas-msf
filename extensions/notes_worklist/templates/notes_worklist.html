@@ -48,12 +48,62 @@
             gap: 8px;
         }
 
-        .views-label {
-            font-size: 12px;
-            font-weight: 600;
+        .kebab-wrapper {
+            position: relative;
+        }
+
+        .kebab-btn {
+            padding: 4px 8px;
+            font-size: 18px;
+            line-height: 1;
+            background-color: transparent;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            cursor: pointer;
             color: #475569;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        }
+
+        .kebab-btn:hover {
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .kebab-menu {
+            position: absolute;
+            top: calc(100% + 4px);
+            right: 0;
+            min-width: 180px;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+            z-index: 50;
+            padding: 4px 0;
+        }
+
+        .kebab-menu.hidden {
+            display: none;
+        }
+
+        .kebab-item {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            background: none;
+            border: none;
+            text-align: left;
+            font-size: 13px;
+            cursor: pointer;
+            color: #1f2937;
+        }
+
+        .kebab-item:hover:not(:disabled) {
+            background-color: #f1f5f9;
+        }
+
+        .kebab-item:disabled {
+            color: #9ca3af;
+            cursor: not-allowed;
         }
 
         .views-select {
@@ -655,26 +705,6 @@
             margin-left: auto;
         }
 
-        .refresh-btn {
-            padding: 8px 16px;
-            background-color: #E5E5E5;
-            color: #595959;
-            border: none;
-            border-radius: 0.375rem;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            transition: background-color 0.2s;
-        }
-
-        .refresh-btn:hover {
-            background-color: #C0C0C0;
-            color: #595959;
-        }
-
         .clear-filters-btn {
             padding: 8px 16px;
             background-color: #E5E5E5;
@@ -744,6 +774,36 @@
             padding: 12px 20px;
             border-bottom: 1px solid #e0e0e0;
             background-color: #f8f9fa;
+        }
+
+        .more-filters-toggle {
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background-color: transparent;
+            border: 1px dashed #94a3b8;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #475569;
+            align-self: flex-end;
+            margin-bottom: 0;
+        }
+
+        .more-filters-toggle:hover {
+            background-color: #f1f5f9;
+            border-color: #64748b;
+        }
+
+        .more-filters {
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 8px;
+            margin-top: 4px;
+        }
+
+        /* Generic utility — overrides element-specific display. */
+        .more-filters.hidden,
+        .filters-group.hidden {
+            display: none !important;
         }
 
         .action-btn {
@@ -956,12 +1016,16 @@
         <div class="worklist-header">
             <h1 class="worklist-title">Notes Worklist</h1>
             <div class="views-section">
-                <label for="viewsSelect" class="views-label">View</label>
                 <select id="viewsSelect" class="views-select">
                     <option value="">— current filters —</option>
                 </select>
-                <button id="saveViewButton" class="action-btn" type="button">Save view</button>
-                <button id="deleteViewButton" class="action-btn" type="button" disabled>Delete view</button>
+                <div class="kebab-wrapper">
+                    <button id="viewMenuButton" class="kebab-btn" type="button" aria-label="View options" aria-haspopup="true">⋮</button>
+                    <div id="viewMenu" class="kebab-menu hidden" role="menu">
+                        <button id="saveViewMenuItem" class="kebab-item" type="button" role="menuitem">Save current as…</button>
+                        <button id="deleteViewMenuItem" class="kebab-item" type="button" role="menuitem" disabled>Delete current view</button>
+                    </div>
+                </div>
             </div>
             <span class="encounter-count" id="encounterCount">Loading notes...</span>
         </div>
@@ -1074,6 +1138,10 @@
                         </div>
                     </div>
                     
+                    <button id="moreFiltersToggle" class="more-filters-toggle" type="button" aria-expanded="false">+ More filters</button>
+                </div>
+
+                <div id="moreFiltersGroup" class="filters-group more-filters hidden">
                     <div class="filter-field">
                         <label class="filter-label">Note Type</label>
                         <div class="filter-dropdown" id="noteTypeFilter" data-values="">
@@ -1110,23 +1178,14 @@
                         </div>
                     </div>
 
-                </div>
-                
-                <div class="filters-group checkbox-group">
                     <label class="checkbox-filter">
                         <input type="checkbox" id="uncommittedCommandsFilter" class="filter-checkbox">
                         <span>Has Uncommitted Commands</span>
                     </label>
                 </div>
                 
-                <!-- Refresh, Clear and Apply buttons -->
+                <!-- Clear, Apply, Print -->
                 <div class="filter-buttons">
-                    <button id="refreshButton" class="refresh-btn">
-                        <svg width="16" height="13" viewBox="0 0 16 13" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path fill-rule="evenodd" clip-rule="evenodd" d="M13.7349 5.55071L15.1929 7.00412C15.3015 7.1124 15.3635 7.26695 15.3635 7.40609C15.3635 7.54522 15.3015 7.69988 15.1929 7.80806C14.9757 8.02451 14.6035 8.02451 14.3863 7.80806L13.8591 7.2824C13.5489 10.2355 11.0362 12.5548 7.99611 12.5548C5.90202 12.5548 3.94775 11.4261 2.87753 9.61709C2.72238 9.33883 2.81553 8.99868 3.09467 8.82858C3.3738 8.67392 3.71503 8.76678 3.88568 9.04503C4.73878 10.5138 6.30529 11.4106 7.99597 11.4106C10.3691 11.4106 12.3389 9.66346 12.6957 7.39065L12.2768 7.80814C12.0597 8.0246 11.6874 8.0246 11.4703 7.80814C11.2531 7.59169 11.2531 7.22058 11.4703 7.00412L12.9283 5.55071C13.1454 5.33425 13.5177 5.33425 13.7349 5.55071ZM7.996 0.772949C10.1054 0.772949 12.0598 1.90161 13.1145 3.72609C13.161 3.81885 13.192 3.9116 13.192 4.00434C13.192 4.20538 13.0834 4.39088 12.8973 4.49917C12.6181 4.66936 12.2614 4.5765 12.1062 4.29824C11.2688 2.82952 9.68668 1.91721 7.996 1.91721C5.62289 1.91721 3.65305 3.66439 3.29631 5.9372L3.71512 5.51971C3.93226 5.30325 4.30455 5.30325 4.5217 5.51971C4.63032 5.62799 4.69232 5.78254 4.69232 5.92168C4.69232 6.06081 4.63032 6.21548 4.5217 6.32365L3.06368 7.77706C2.84654 7.99351 2.47425 7.99351 2.2571 7.77706L0.799087 6.32365C0.581945 6.1072 0.581945 5.73609 0.799087 5.51963C1.01623 5.30317 1.38851 5.30317 1.60566 5.51963L2.11751 6.02985C2.42769 3.07671 4.94043 0.772949 7.996 0.772949Z" fill="#595959"/>
-                        </svg>
-                        <span>Refresh</span>
-                    </button>
                     <button id="clearFilters" class="clear-filters-btn">
                         Clear All
                     </button>
@@ -2014,7 +2073,7 @@
             const clearFiltersButton = document.getElementById('clearFilters');
             const printButton = document.getElementById('printButton');
             const applyFiltersButton = document.getElementById('applyFilters');
-            const refreshButton = document.getElementById('refreshButton');
+            const moreFiltersToggle = document.getElementById('moreFiltersToggle');
             const patientSearchInput = document.getElementById('patientSearchInput');
             const dosStartInput = document.getElementById('dosStartInput');
             const dosEndInput = document.getElementById('dosEndInput');
@@ -2146,46 +2205,20 @@
                 applyFilters();
             });
 
-            // Refresh button
-            refreshButton.addEventListener('click', async () => {
-                try {
-                    // Show loading state
-                    showLoadingSpinner();
-                    document.getElementById('encounterCount').textContent = 'Loading notes...';
-                    
-                    const patientSearchInput = document.getElementById('patientSearchInput');
-                    const dosStartInput = document.getElementById('dosStartInput');
-                    const dosEndInput = document.getElementById('dosEndInput');
-                    if (patientSearchInput) {
-                        currentFilters.patient_search = patientSearchInput.value.trim();
-                    }
-                    if (dosStartInput) {
-                        currentFilters.dos_start = dosStartInput.value;
-                    }
-                    if (dosEndInput) {
-                        currentFilters.dos_end = dosEndInput.value;
-                    }
-
-                    // Refresh data with current filters and sorting
-                    await fetchEncounters(currentFilters, paginationData.current_page);
-                    
-                    // Re-render the table
-                    renderTable();
-                    updateEncounterCount();
-                    updatePaginationControls();
-                    updateSortIndicators();
-                    hideLoadingSpinner();
-                } catch (error) {
-                    console.error('Error refreshing encounters:', error);
-                    document.getElementById('encounterCount').textContent = 'Error loading notes';
-                    hideLoadingSpinner();
-                }
-            });
-
             // Print button — fetches ALL matching rows, renders them, triggers
             // the browser's print dialog, then restores the paginated view after.
             if (printButton) {
                 printButton.addEventListener('click', () => printWorklist());
+            }
+
+            // "More filters" disclosure toggle.
+            if (moreFiltersToggle) {
+                moreFiltersToggle.addEventListener('click', () => {
+                    const group = document.getElementById('moreFiltersGroup');
+                    const isHidden = group.classList.toggle('hidden');
+                    moreFiltersToggle.setAttribute('aria-expanded', String(!isHidden));
+                    moreFiltersToggle.textContent = isHidden ? '+ More filters' : '− Fewer filters';
+                });
             }
         }
 
@@ -2263,8 +2296,25 @@
             updateDeleteViewButton();
         }
 
+        function expandMoreFiltersIfNeeded() {
+            const hasMore =
+                (currentFilters.note_type_names && currentFilters.note_type_names.length > 0) ||
+                (currentFilters.claim_queue_names && currentFilters.claim_queue_names.length > 0) ||
+                currentFilters.has_uncommitted_commands;
+            if (!hasMore) return;
+            const group = document.getElementById('moreFiltersGroup');
+            const toggle = document.getElementById('moreFiltersToggle');
+            if (group && group.classList.contains('hidden')) {
+                group.classList.remove('hidden');
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', 'true');
+                    toggle.textContent = '− Fewer filters';
+                }
+            }
+        }
+
         function updateDeleteViewButton() {
-            const btn = document.getElementById('deleteViewButton');
+            const btn = document.getElementById('deleteViewMenuItem');
             if (!btn) return;
             const view = savedViews.find(v => v.id === currentViewId);
             btn.disabled = !(view && view.is_mine);
@@ -2321,6 +2371,11 @@
             if (dosEnd) dosEnd.value = currentFilters.dos_end;
             const uncomm = document.getElementById('uncommittedCommandsFilter');
             if (uncomm) uncomm.checked = !!currentFilters.has_uncommitted_commands;
+
+            // If the saved view sets any "More filters" (Note Type, Claim Queue,
+            // Has Uncommitted Commands), expand the disclosure so the user can
+            // see them — otherwise the filter would silently affect the worklist.
+            expandMoreFiltersIfNeeded();
 
             updateDeleteViewButton();
             applyFilters();
@@ -2409,17 +2464,34 @@
 
         function setupSavedViewsListeners() {
             const select = document.getElementById('viewsSelect');
-            const saveBtn = document.getElementById('saveViewButton');
-            const delBtn = document.getElementById('deleteViewButton');
-            const modal = document.getElementById('saveViewModal');
+            const kebabBtn = document.getElementById('viewMenuButton');
+            const kebabMenu = document.getElementById('viewMenu');
+            const saveItem = document.getElementById('saveViewMenuItem');
+            const delItem = document.getElementById('deleteViewMenuItem');
             const closeBtn = document.getElementById('saveViewClose');
             const cancelBtn = document.getElementById('saveViewCancel');
             const submitBtn = document.getElementById('saveViewSubmit');
             const nameInput = document.getElementById('saveViewName');
 
             select.addEventListener('change', (e) => applySavedView(e.target.value));
-            saveBtn.addEventListener('click', openSaveViewModal);
-            delBtn.addEventListener('click', deleteCurrentView);
+
+            // Kebab menu: toggle open on button click, close on outside click,
+            // close after any menu item action.
+            const closeKebab = () => kebabMenu.classList.add('hidden');
+            kebabBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                kebabMenu.classList.toggle('hidden');
+            });
+            document.addEventListener('click', (e) => {
+                if (!kebabMenu.classList.contains('hidden') &&
+                    !kebabMenu.contains(e.target) &&
+                    e.target !== kebabBtn) {
+                    closeKebab();
+                }
+            });
+            saveItem.addEventListener('click', () => { closeKebab(); openSaveViewModal(); });
+            delItem.addEventListener('click', () => { closeKebab(); deleteCurrentView(); });
+
             closeBtn.addEventListener('click', closeSaveViewModal);
             cancelBtn.addEventListener('click', closeSaveViewModal);
             submitBtn.addEventListener('click', submitSaveView);
