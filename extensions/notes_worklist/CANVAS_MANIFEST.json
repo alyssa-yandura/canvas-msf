@@ -30,6 +30,10 @@
         "effects": [],
         "views": []
     },
+    "custom_data": {
+        "namespace": "notes_worklist__views",
+        "access": "read_write"
+    },
     "secrets": [],
     "tags": {},
     "references": [],
