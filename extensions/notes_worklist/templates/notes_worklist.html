@@ -59,6 +59,12 @@
             color: var(--text-dim);
         }
 
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
         .views-section {
             display: flex;
             align-items: center;
@@ -1140,30 +1146,32 @@
     <div class="worklist-container">
         <div class="worklist-header">
             <h1 class="worklist-title">Notes Worklist</h1>
-            <div class="views-section">
-                <div class="views-pill-wrapper">
-                    <button id="viewsPillButton" class="views-pill" type="button" aria-haspopup="true" aria-expanded="false">
-                        <svg class="views-pill-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                            <path d="M2 3h12l-4.5 5.5V13L6.5 11V8.5L2 3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-                        </svg>
-                        <span id="viewsPillLabel">Current filters</span>
-                        <svg class="views-pill-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                            <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-                    <div id="viewsPopover" class="views-popover hidden" role="menu">
-                        <div id="viewsList" class="views-popover-list">
-                            <!-- View rows populated by JS -->
-                        </div>
-                        <div class="views-popover-divider"></div>
-                        <button id="viewsPopoverSave" class="views-popover-action" type="button">
-                            <span aria-hidden="true">＋</span>
-                            <span>Save current as…</span>
+            <div class="header-right">
+                <span class="encounter-count" id="encounterCount">Loading notes...</span>
+                <div class="views-section">
+                    <div class="views-pill-wrapper">
+                        <button id="viewsPillButton" class="views-pill" type="button" aria-haspopup="true" aria-expanded="false">
+                            <svg class="views-pill-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path d="M2 3h12l-4.5 5.5V13L6.5 11V8.5L2 3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                            </svg>
+                            <span id="viewsPillLabel">Saved Filters</span>
+                            <svg class="views-pill-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                         </button>
+                        <div id="viewsPopover" class="views-popover hidden" role="menu">
+                            <div id="viewsList" class="views-popover-list">
+                                <!-- View rows populated by JS -->
+                            </div>
+                            <div class="views-popover-divider"></div>
+                            <button id="viewsPopoverSave" class="views-popover-action" type="button">
+                                <span aria-hidden="true">＋</span>
+                                <span>Save current as…</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-            <span class="encounter-count" id="encounterCount">Loading notes...</span>
         </div>
 
         <!-- Save view modal -->
@@ -2457,7 +2465,7 @@
             const labelEl = document.getElementById('viewsPillLabel');
             const activeView = savedViews.find(v => v.id === currentViewId);
             if (labelEl) {
-                labelEl.textContent = activeView ? activeView.name : 'Current filters';
+                labelEl.textContent = activeView ? activeView.name : 'Saved Filters';
             }
 
             // Repopulate the popover list. Each row is clickable to apply;
